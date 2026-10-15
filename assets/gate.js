@@ -19,7 +19,9 @@
   function looksGzip(b) { return b && b.length > 2 && b[0] === 0x1f && b[1] === 0x8b; }
 
   async function gunzip(bytes) {
-    if (typeof DecompressionStream === 'undefined') return bytes;
+    if (typeof DecompressionStream === 'undefined') {
+      throw new Error('当前浏览器不支持本地解压（DecompressionStream）：请使用 Chrome / Edge / Safari 16.4+ / Firefox 113+ 打开本站');
+    }
     var stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
     return new Uint8Array(await new Response(stream).arrayBuffer());
   }
@@ -76,7 +78,7 @@
       var msg = String((e && e.message) || e);
       err.textContent = msg.indexOf('HTTP') === 0
         ? ('页面文件加载失败（' + msg + '），请检查网络后重试')
-        : '口令不正确，请重试';
+        : (msg.indexOf('浏览器') >= 0 ? msg : '口令不正确，请重试');
       sessionStorage.removeItem(SS_PASS); localStorage.removeItem(LS_PASS);
       gate.classList.add('shake');
       setTimeout(function () { gate.classList.remove('shake'); }, 500);

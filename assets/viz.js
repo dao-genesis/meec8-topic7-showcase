@@ -767,8 +767,293 @@ window.MWViz = (function () {
     draw();
   }
 
+
+  /* ================= 6. 传感器故障容错台 ================= */
+  function buildRobust(host) {
+    var D = data('robust');
+    if (!D) return;
+    var state = { case: 0, sc: 0 };
+    var tabs = E('div', 'vctl');
+    var chips = E('div', 'vctl');
+    var grid = E('div', 'mgrid');
+    host.appendChild(tabs); host.appendChild(chips); host.appendChild(grid);
+    var driftBox = E('div', 'mt14');
+    host.appendChild(driftBox);
+    var note = E('p', 'small muted');
+    note.style.margin = '10px 2px 0';
+    note.textContent = '场景为测试段注入式扰动（模拟口径）；"稳健模式" = 质控 + 前向填充 + 守卫模型；"严格模式可用率" = 允许原样服务的时间占比。出处：reports/robustness.json。';
+    host.appendChild(note);
+
+    function cur() { return D.cases[state.case]; }
+    function sc() { return cur().scenarios[state.sc] || cur().scenarios[0]; }
+    function ref() { return cur().scenarios[0]; }
+
+    function barsHtml(s, r) {
+      var rows = [
+        { k: '稳健模式（质控 + 守卫）', v: s.robust, rv: r.robust, cls: 'good' },
+        { k: '前向填充基线', v: s.ffill, rv: r.ffill },
+        { k: '持续法基线', v: s.persist, rv: r.persist }
+      ];
+      var html = '<div class="mpanel"><h4>NSE（越高越好 · 细线 = 无扰动参照）</h4>';
+      rows.forEach(function (it) {
+        var pct = Math.max(0, Math.min(100, it.v * 100));
+        var rp = Math.max(0, Math.min(100, it.rv * 100));
+        html += '<div class="mrow"><span class="mlab">' + it.k + '</span>' +
+          '<span class="mtrack"><i class="' + (it.cls || '') + '" style="width:' + pct + '%"></i>' +
+          '<em class="refmark" style="left:' + rp + '%"></em></span>' +
+          '<span class="mval">' + fmt(it.v, 3) + '</span></div>';
+      });
+      html += '</div>';
+      return html;
+    }
+
+    function cardsHtml(s, r) {
+      var d = s.robust - r.robust;
+      var qc = s.qc || {};
+      var qcTop = Object.keys(qc).slice(0, 3).map(function (k) { return k + ' ' + qc[k]; }).join(' · ');
+      return '<div class="mpanel"><h4>运行指标</h4>' +
+        '<div class="vread">' +
+        '<div class="vcell"><div class="vk">严格模式可用率</div><div class="vv">' + fmt(s.strict * 100, 1) + '%</div></div>' +
+        '<div class="vcell"><div class="vk">稳健 NSE（较无扰动）</div><div class="vv ' + (d >= -0.02 ? 'good' : '') + '">' + fmt(s.robust, 3) + '（' + (d >= 0 ? '+' : '') + fmt(d, 3) + '）</div></div>' +
+        '<div class="vcell"><div class="vk">稳健 MAE</div><div class="vv">' + fmt(s.mae_robust, 1) + ' ' + cur().unit + '</div></div>' +
+        '<div class="vcell wide"><div class="vk">质控标记（前 3 类）</div><div class="vv">' + (qcTop || '—') + '</div></div>' +
+        '</div></div>';
+    }
+
+    function driftHtml() {
+      var site = cur().site;
+      var e = null;
+      (D.drift || []).forEach(function (x) { if (x.site === site && !e) e = x; });
+      if (!e) return '';
+      return '<div class="card tight"><p class="small"><b>漂移检测演练（' + (site === 'koeln' ? 'Köln' : '泰和') + ' · ' + e.sensor + '）：</b>' +
+        '注入 ' + fmt(e.drift_end, 2) + ' 的缓慢漂移 → ' +
+        (e.alarm ? '自动报警于 ' + e.alarm.slice(5, 16) + '（此前误报率 ' + fmt(e.far_before * 100, 2) + '%）' : '未触发报警（漂移量 ' + fmt(e.drift_end, 2) + ' 小于检测阈值，属预期）') +
+        '；漂移后 MAE：带守卫 ' + fmt(e.mae_guarded_after, 1) + ' vs 无守卫 ' + fmt(e.mae_model_after, 1) + ' vs 持续法 ' + fmt(e.mae_persist_after, 1) + '。</p></div>';
+    }
+
+    function draw() {
+      tabs.innerHTML = '';
+      D.cases.forEach(function (c, i) {
+        tabs.appendChild(chip((c.site === 'koeln' ? 'Köln' : '泰和') + ' +' + (c.h / 60) + 'h', state.case === i, function () {
+          state.case = i; state.sc = 0; draw();
+        }));
+      });
+      chips.innerHTML = '';
+      cur().scenarios.forEach(function (x, i) {
+        chips.appendChild(chip(x.name, state.sc === i, function () { state.sc = i; draw(); }));
+      });
+      var s = sc(), r = ref();
+      grid.innerHTML = barsHtml(s, r) + cardsHtml(s, r);
+      driftBox.innerHTML = driftHtml();
+    }
+    draw();
+  }
+
+  /* ================= 7. SHAP 可解释性 ================= */
+  var SHAP_COLORS = { '历史进水': '#00796b', '管网液位': '#1565c0', '降雨': '#26a69a', '时刻/星期': '#b0bec5' };
+
+  function buildShap(host) {
+    var D = data('shap');
+    if (!D) return;
+    var state = { site: 0, slice: 'all' };
+    var tabs = E('div', 'vctl');
+    var sliceBar = E('div', 'vctl');
+    var grid = E('div', 'mgrid');
+    host.appendChild(tabs); host.appendChild(sliceBar); host.appendChild(grid);
+    var note = E('p', 'small muted');
+    note.style.margin = '10px 2px 0';
+    note.textContent = 'SHAP 为模型输出的相关性分摊（TreeExplainer），不等于物理因果；特征全部来自发布时刻及之前（无泄漏）。出处：reports/shap_summary.json · 加性误差上限见右栏。';
+    host.appendChild(note);
+
+    function cur() { return D.sites[state.site]; }
+
+    function topHtml(s) {
+      var max = s.top[0].v || 1;
+      var html = '<div class="mpanel"><h4>特征贡献 Top 12（平均 |SHAP| · ' + s.unit + '）</h4>';
+      s.top.forEach(function (t) {
+        var pct = Math.max(1, (t.v / max) * 100);
+        html += '<div class="mrow"><span class="mlab">' + t.label + '</span>' +
+          '<span class="mtrack"><i class="good" style="width:' + pct + '%"></i></span>' +
+          '<span class="mval">' + fmt(t.v, 1) + '</span></div>';
+      });
+      html += '</div>';
+      return html;
+    }
+
+    function groupHtml(s) {
+      var g = s.groups[state.slice] || s.groups.all;
+      var keys = Object.keys(g).sort(function (a, b) { return g[b] - g[a]; });
+      var bar = '<div class="shap-stack">';
+      keys.forEach(function (k) {
+        bar += '<i style="width:' + (g[k] * 100) + '%;background:' + (SHAP_COLORS[k] || '#90a4ae') + '" title="' + k + '"></i>';
+      });
+      bar += '</div>';
+      var legend = '<div class="vlegend">' + keys.map(function (k) {
+        return '<span><i style="background:' + (SHAP_COLORS[k] || '#90a4ae') + '"></i>' + k + ' ' + fmt(g[k] * 100, 1) + '%</span>';
+      }).join('') + '</div>';
+      var label = state.slice === 'all' ? '全测试段' : (state.slice === 'wet' ? '雨天（' + s.n_wet + ' 步）' : '晴天');
+      return '<div class="mpanel"><h4>分组贡献占比（' + label + '）</h4>' + bar + legend +
+        '<div class="vread" style="margin-top:12px">' +
+        '<div class="vcell"><div class="vk">基线 φ0（E[f(X)]）</div><div class="vv">' + fmt(s.base, 1) + ' ' + s.unit + '</div></div>' +
+        '<div class="vcell"><div class="vk">解释样本</div><div class="vv">' + s.n.toLocaleString() + '</div></div>' +
+        '<div class="vcell wide"><div class="vk">加性误差上限</div><div class="vv">' + s.add_err.toExponential(1) + ' ' + s.unit + '</div></div>' +
+        '</div></div>';
+    }
+
+    function draw() {
+      tabs.innerHTML = '';
+      D.sites.forEach(function (s, i) {
+        tabs.appendChild(chip((s.site === 'koeln' ? 'Köln（真实）' : '泰和（模拟）') + ' +' + (s.h / 60) + 'h', state.site === i, function () {
+          state.site = i; draw();
+        }));
+      });
+      sliceBar.innerHTML = '';
+      [['all', '全部'], ['wet', '雨天'], ['dry', '晴天']].forEach(function (x) {
+        sliceBar.appendChild(chip(x[1], state.slice === x[0], function () { state.slice = x[0]; draw(); }));
+      });
+      var s = cur();
+      grid.innerHTML = topHtml(s) + groupHtml(s);
+    }
+    draw();
+  }
+
+  /* ================= 8. 输送延迟实验台 ================= */
+  function buildDelay(host) {
+    var D = data('delay');
+    if (!D) return;
+    var state = { v: D.v_ms, running: false, p: 0, last: 0 };
+    var ctl = E('div', 'vctl');
+    var btn = E('button', 'vbtn', '▶ 释放脉冲');
+    btn.type = 'button';
+    var vlab = E('span', 'small muted', '流速 v = ' + fmt(state.v, 1) + ' m/s');
+    var vr = document.createElement('input');
+    vr.type = 'range'; vr.min = 5; vr.max = 12; vr.value = state.v * 10; vr.className = 'vrange';
+    ctl.appendChild(btn); ctl.appendChild(vr); ctl.appendChild(vlab);
+    host.appendChild(ctl);
+
+    var c = chart(host, 250);
+    c.pad = { l: 92, r: 20, t: 16, b: 26 };
+    var read = E('div', 'vread');
+    host.appendChild(read);
+    var note = E('p', 'small muted');
+    note.style.margin = '10px 2px 0';
+    note.textContent = '输送延迟 τ = 管道长度 L ÷ 流速 v（核心物理机制 · ' + D.lead_note + '）；绿色虚线 = 预警提前量 120 min —— τ 大于它时，上游信号到达前预警已发出。出处：官方骨架 + 模拟场景参数。';
+    host.appendChild(note);
+
+    var T_MAX_H = 4.0;   // 时间轴 0..4h
+    var SPEED = 0.7;     // 每秒推进小时数 → 4h ≈ 5.7s
+
+    function taus() {
+      return D.nodes.map(function (n) { return n.km * 1000 / (state.v * 3600); });
+    }
+
+    function fmtTau(h) {
+      var m = Math.round(h * 60);
+      return Math.floor(m / 60) + ' h ' + pad2(m % 60) + ' min';
+    }
+
+    function draw() {
+      c.fit();
+      var ctx = c.ctx, w = c.w, h = c.h, pad = c.pad;
+      var lanes = D.nodes.length;
+      var X = function (hrs) { return pad.l + (w - pad.l - pad.r) * (hrs / T_MAX_H); };
+      var ts = taus();
+      ctx.clearRect(0, 0, w, h);
+      ctx.font = '11px system-ui,-apple-system,"Segoe UI",sans-serif';
+      ctx.textBaseline = 'middle';
+      // 时间轴
+      for (var hr = 0; hr <= T_MAX_H; hr += 1) {
+        ctx.strokeStyle = C.grid; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(X(hr), pad.t); ctx.lineTo(X(hr), h - pad.b); ctx.stroke();
+        ctx.fillStyle = C.muted; ctx.textAlign = 'center';
+        ctx.fillText(hr + ' h', X(hr), h - pad.b + 12);
+      }
+      // 预警提前量参考线
+      ctx.save(); ctx.setLineDash([6, 4]); ctx.strokeStyle = C.teal; ctx.globalAlpha = .8; ctx.lineWidth = 1.3;
+      ctx.beginPath(); ctx.moveTo(X(2), pad.t); ctx.lineTo(X(2), h - pad.b); ctx.stroke(); ctx.restore();
+      ctx.fillStyle = C.teal; ctx.textAlign = 'left';
+      ctx.fillText('预警提前量 120 min', X(2) + 4, pad.t + 8);
+      // 车道
+      var laneH = (h - pad.b - pad.t) / lanes;
+      D.nodes.forEach(function (n, i) {
+        var y = pad.t + laneH * (i + 0.5);
+        ctx.strokeStyle = '#cfd8dc'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+        ctx.fillStyle = C.muted; ctx.textAlign = 'right';
+        ctx.fillText(n.id + ' ' + n.km + ' km', pad.l - 6, y);
+        var tau = ts[i];
+        var arriveX = X(Math.min(tau, T_MAX_H));
+        // 轨迹
+        ctx.strokeStyle = 'rgba(0,121,107,.35)'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(arriveX, y); ctx.stroke();
+        // 到达标记
+        if (state.p * T_MAX_H >= tau) {
+          ctx.fillStyle = C.teal;
+          ctx.beginPath(); ctx.arc(arriveX, y, 6, 0, 6.283); ctx.fill();
+          ctx.fillStyle = 'white';
+          ctx.beginPath(); ctx.arc(arriveX, y, 2.4, 0, 6.283); ctx.fill();
+          ctx.fillStyle = C.teal; ctx.textAlign = 'left';
+          ctx.fillText('到达 ' + fmtTau(tau), arriveX + 9, y);
+        }
+        // 脉冲
+        var tp = Math.min(state.p * T_MAX_H, tau);
+        var px = X(tp);
+        ctx.fillStyle = '#ef6c00';
+        ctx.beginPath(); ctx.arc(px, y, 5.5, 0, 6.283); ctx.fill();
+        ctx.strokeStyle = 'rgba(239,108,0,.4)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(px, y, 9, 0, 6.283); ctx.stroke();
+      });
+      // 厂前
+      ctx.fillStyle = C.dark; ctx.textAlign = 'left';
+      ctx.fillText('厂前（' + D.plant + '）', pad.l, pad.t - 4);
+      updateRead(ts);
+    }
+
+    function updateRead(ts) {
+      var html = '';
+      D.nodes.forEach(function (n, i) {
+        html += '<div class="vcell"><div class="vk">' + n.id + '（' + n.km + ' km）</div><div class="vv">τ = ' + fmtTau(ts[i]) + '</div></div>';
+      });
+      html += '<div class="vcell wide"><div class="vk">含义</div><div class="vv">τ 就是"超前感知"的物理上限：上游信号领先 τ 小时到达厂前</div></div>';
+      read.innerHTML = html;
+    }
+
+    var raf = null;
+    function loop(tsMs) {
+      if (!state.running) return;
+      if (!state.last) state.last = tsMs;
+      var dt = (tsMs - state.last) / 1000;
+      state.last = tsMs;
+      state.p = Math.min(1, state.p + dt * SPEED / T_MAX_H);
+      draw();
+      if (state.p >= 1) {
+        state.running = false; btn.textContent = '▶ 重放'; btn.classList.remove('on');
+        return;
+      }
+      raf = requestAnimationFrame(loop);
+    }
+
+    btn.addEventListener('click', function () {
+      if (state.running) {
+        state.running = false; btn.textContent = '▶ 继续'; btn.classList.remove('on');
+        if (raf) cancelAnimationFrame(raf);
+      } else {
+        if (state.p >= 1) state.p = 0;
+        state.running = true; state.last = 0; btn.textContent = '⏸ 暂停'; btn.classList.add('on');
+        raf = requestAnimationFrame(loop);
+      }
+    });
+    vr.addEventListener('input', function () {
+      state.v = parseInt(vr.value, 10) / 10;
+      vlab.textContent = '流速 v = ' + fmt(state.v, 1) + ' m/s';
+      draw();
+    });
+    onResize(draw);
+    draw();
+  }
+
   /* ================= init ================= */
-  var BUILDERS = { event: buildEvent, predict: buildPredict, swmm: buildSwmm, stress: buildStress, models: buildModels };
+  var BUILDERS = { event: buildEvent, predict: buildPredict, swmm: buildSwmm, stress: buildStress, models: buildModels, robust: buildRobust, shap: buildShap, delay: buildDelay };
 
   function init(root) {
     var scope = root || document;

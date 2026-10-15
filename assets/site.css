@@ -229,3 +229,9 @@ footer .row{margin-top:6px}
 @media(max-width:720px){.mgrid{grid-template-columns:1fr}.mlab{width:76px}}
 .mtrack.center{position:relative}
 .mtrack.center::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:#b0bec5}
+.mtrack{position:relative}
+.mtrack .refmark{position:absolute;top:-2px;bottom:-2px;width:2px;background:#37474f;opacity:.55}
+.shap-stack{display:flex;height:26px;border-radius:8px;overflow:hidden;margin:6px 0 10px;background:#eef3f3}
+.shap-stack i{display:block;height:100%}
+.vtable{overflow-x:auto}
+@media(max-width:560px){.vtable th,.vtable td{padding:4px 5px;font-size:.74rem}}
