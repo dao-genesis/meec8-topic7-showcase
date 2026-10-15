@@ -235,3 +235,14 @@ footer .row{margin-top:6px}
 .shap-stack i{display:block;height:100%}
 .vtable{overflow-x:auto}
 @media(max-width:560px){.vtable th,.vtable td{padding:4px 5px;font-size:.74rem}}
+.vsl{display:flex;flex-direction:column;gap:2px;min-width:190px;flex:1}
+.vsl-lab{font-size:.8rem;color:#607d8b}
+.vsl-lab b{color:#00796b}
+@media print{
+  nav.site,.vctl,.vbtn,.vrange,.vchip,.vtab,footer .row,#lightbox,.vlegend{display:none !important}
+  body{background:#fff}
+  header.page{background:#fff;color:#004d40;border-bottom:2px solid #00796b}
+  .card,.note{box-shadow:none;border:1px solid #cfd8dc;break-inside:avoid}
+  a{color:#004d40}
+  main{max-width:100%}
+}

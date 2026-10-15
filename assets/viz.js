@@ -1052,8 +1052,70 @@ window.MWViz = (function () {
     draw();
   }
 
+
+  /* ================= 9. 效益计算器 ================= */
+  function buildBenefit(host) {
+    var D = data('benefit');
+    if (!D) return;
+    var state = { lead: D.lead_min, cap: D.capacity_cms, alpha: Math.round(D.alpha * 100) };
+    var ctl = E('div', 'vctl');
+    host.appendChild(ctl);
+    var grid = E('div', 'mgrid');
+    host.appendChild(grid);
+    var note = E('p', 'small muted');
+    note.style.margin = '10px 2px 0';
+    note.textContent = '拖三个滑块，看"雨前预抽空可腾调蓄容积"如何变化（公式透明可查）：容积 = 提前量 × 泵站合计能力 × 可预降比例 α。' + D.note + '。';
+    host.appendChild(note);
+
+    function sliders() {
+      ctl.innerHTML = '';
+      function slider(label, min, max, step, val, key, fmtf) {
+        var box = E('span', 'vsl');
+        var lab = E('span', 'vsl-lab', label + ' <b>' + fmtf(val) + '</b>');
+        var r = document.createElement('input');
+        r.type = 'range'; r.min = min; r.max = max; r.step = step; r.value = val; r.className = 'vrange';
+        r.addEventListener('input', function () {
+          state[key] = parseFloat(r.value);
+          lab.innerHTML = label + ' <b>' + fmtf(state[key]) + '</b>';
+          draw();
+        });
+        box.appendChild(lab); box.appendChild(r);
+        ctl.appendChild(box);
+      }
+      slider('提前量', 30, 180, 10, state.lead, 'lead', function (v) { return v + ' min'; });
+      slider('泵站合计能力', 20, 60, 0.5, state.cap, 'cap', function (v) { return fmt(v, 1) + ' m³/s'; });
+      slider('可预降调蓄比例 α', 5, 30, 1, state.alpha, 'alpha', function (v) { return fmt(v, 0) + '%'; });
+    }
+
+    function draw() {
+      var vol = state.lead * 60 * state.cap * (state.alpha / 100) / 1e4;  // 万 m³
+      var mult = vol / D.baseline_wan;
+      var refPct = Math.min(100, (vol / 8) * 100);
+      var basePct = Math.min(100, (D.baseline_wan / 8) * 100);
+      grid.innerHTML =
+        '<div class="mpanel"><h4>可腾调蓄容积（万 m³）</h4>' +
+        '<div class="mrow"><span class="mlab">当前设定</span>' +
+        '<span class="mtrack"><i class="good" style="width:' + refPct + '%"></i>' +
+        '<em class="refmark" style="left:' + basePct + '%"></em></span>' +
+        '<span class="mval">' + fmt(vol, 2) + '</span></div>' +
+        '<div class="mrow"><span class="mlab">默认设定（120min/40.5/15%）</span>' +
+        '<span class="mtrack"><i style="width:' + Math.min(100, D.ref_wan / 8 * 100) + '%"></i></span>' +
+        '<span class="mval">' + fmt(D.ref_wan, 2) + '</span></div>' +
+        '<p class="small muted" style="margin:6px 0 0">细线 = 无调控超阈体积 2.09 万 m³（P=50a 概化 SWMM）</p></div>' +
+        '<div class="mpanel"><h4>解读</h4><div class="vread">' +
+        '<div class="vcell"><div class="vk">可腾容积</div><div class="vv good">' + fmt(vol, 2) + ' 万 m³</div></div>' +
+        '<div class="vcell"><div class="vk">≈ 无调控超阈体积的</div><div class="vv">' + fmt(mult, 1) + ' 倍</div></div>' +
+        '<div class="vcell"><div class="vk">参与泵站</div><div class="vv">' + D.stations + ' 站</div></div>' +
+        '<div class="vcell wide"><div class="vk">公式</div><div class="vv">' + fmt(state.lead, 0) + ' min × 60 × ' + fmt(state.cap, 1) + ' m³/s × ' + fmt(state.alpha, 0) + '% = ' + fmt(vol * 1e4 / 1e4, 2) + ' 万 m³</div></div>' +
+        '</div></div>';
+    }
+
+    sliders();
+    draw();
+  }
+
   /* ================= init ================= */
-  var BUILDERS = { event: buildEvent, predict: buildPredict, swmm: buildSwmm, stress: buildStress, models: buildModels, robust: buildRobust, shap: buildShap, delay: buildDelay };
+  var BUILDERS = { event: buildEvent, predict: buildPredict, swmm: buildSwmm, stress: buildStress, models: buildModels, robust: buildRobust, shap: buildShap, delay: buildDelay, benefit: buildBenefit };
 
   function init(root) {
     var scope = root || document;
