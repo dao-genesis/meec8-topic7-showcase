@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>网页演示 · 主题七成果展示站</title>
+<meta name="description" content="网页版演示稿：20 页讲完主题七项目（背景/数据/模型/结果/闭环/边界），支持键盘翻页与全屏。">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/favicon.svg">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+
+<header class="page"><div class="wrap">
+  <h1>🎞 网页演示：20 页讲完整个项目</h1>
+  <p>← / → 或空格翻页 · F 全屏 · 点击页面右侧翻下一页 · 对应 8 分钟陈述结构</p>
+</div></header>
+
+<nav class="site"><div class="wrap">
+  <a class="home" href="index.html">首页</a>
+  <a href="logic.html">底层逻辑</a>
+  <a href="results.html">结果全景</a>
+  <a href="qa.html">复习问答</a>
+  <a href="slides.html">网页演示</a>
+  <a href="materials.html">材料与复现</a>
+</div></nav>
+
+<div class="deck">
+  <div class="bar"><i></i></div>
+  <div class="stage">
+
+    <!-- 1 -->
+    <section class="slide on">
+      <div class="kicker">第八届全国大学生市政环境 AI+ 创新实践能力大赛 · 产业赛道 · 主题七</div>
+      <h2 style="font-size:1.8rem;margin-top:10px">基于厂站网一体化的污水厂进厂水量水质<br>超前感知与协同调控模型</h2>
+      <div class="body">
+        <p class="lead">面向"感知 → 预测 → 预警 → 预控"全链路闭环：<br>
+        融合上游管网液位、泵站状态与降雨，超前 1~3 小时预测进厂水量与水质负荷，驱动四级预警与泵站协同调度。</p>
+        <div class="grid g3 mt20">
+          <div class="metric"><div class="v">0.943</div><div class="k">Köln 真实数据 +1h NSE</div></div>
+          <div class="metric"><div class="v">0.972</div><div class="k">泰和场景 +2h NSE（模拟）</div></div>
+          <div class="metric"><div class="v">183 项</div><div class="k">谱系 SHA-256 可核验</div></div>
+        </div>
+      </div>
+      <div class="pg">1 / 20</div>
+    </section>
+
+    <!-- 2 -->
+    <section class="slide">
+      <div class="kicker">背景 · 产业语境</div>
+      <h2>上海排水管理体制改革 → "厂站网一体化"</h2>
+      <div class="body">
+        <ul>
+          <li>2025 年 4 月市政府印发改革方案：到 <b>2026 年底</b>，石洞口 / 竹园 / 白龙港三大片区实现厂站网一体化运维</li>
+          <li>规模：<b>744 万 m³/d</b>（占全市约 <b>70%</b>），五大统一——含<b>统一运行调度</b></li>
+          <li>改革直面的问题：厂站网分离、运行效率不高；<b>泵站放江污染突出、进水浓度偏低</b></li>
+          <li>配套建设：<b>排水感知体系及模拟评估系统</b>（2026 年底）——本选题的直接语境</li>
+        </ul>
+        <div class="note teal">我们要做的，是"感知体系"里最前端的一段：把上游管网与泵站信号变成厂前进水的超前认知。</div>
+      </div>
+      <div class="pg">2 / 20</div>
+    </section>
+
+    <!-- 3 -->
+    <section class="slide">
+      <div class="kicker">问题定义</div>
+      <h2>厂前进水突变 = 工艺稳定的最大威胁</h2>
+      <div class="body">
+        <ul>
+          <li>合流制/截流式系统：降雨 → 管网入流入渗（RDII）→ 进厂流量<b>数小时内成倍波动</b></li>
+          <li>初期冲刷 + 雨水稀释 + 偷排冲击 → 进水 COD / 氨氮 / 毒性剧烈变化</li>
+          <li>工艺调整存在小时级惯性——只能"事后响应"时，生化系统往往已经受损</li>
+        </ul>
+        <p class="lead mt14">机会在哪？<b>水还没到、信号先到</b>——上游管网节点距厂前 0.8~10.5 km，污水要走一段时间。</p>
+      </div>
+      <div class="pg">3 / 20</div>
+    </section>
+
+    <!-- 4 -->
+    <section class="slide">
+      <div class="kicker">核心洞察</div>
+      <h2>输送延迟 = 天然的超前量（0.3 ~ 3.6 小时）</h2>
+      <div class="body">
+        <p class="lead">τ = L / v：设计流速 0.8 m/s、距离 0.8~10.5 km → <b>τ ≈ 0.3 ~ 3.6 小时</b></p>
+        <div class="grid g2 mt14">
+          <div class="card tight"><h3 style="margin-top:0">上游（t 时刻可观测）</h3><p class="small">管网关键节点液位 / 流量、泵站运行状态、降雨</p></div>
+          <div class="card tight"><h3 style="margin-top:0">厂前（t + τ 到达）</h3><p class="small">进水量、COD / 氨氮负荷 —— 我们要预测的目标</p></div>
+        </div>
+        <div class="note">因果纪律：上游信号严格不含未来信息——零填充因果延迟路由 + 单元测试保证。</div>
+      </div>
+      <div class="pg">4 / 20</div>
+    </section>
+
+    <!-- 5 -->
+    <section class="slide">
+      <div class="kicker">赛题解构</div>
+      <h2>把赛题变成一条可执行链路</h2>
+      <div class="body">
+        <div class="flow" style="justify-content:flex-start">
+          <div class="node"><b>① 感知</b>管网液位 / 泵站 / 降雨<br>多源融合</div>
+          <div class="arrow">→</div>
+          <div class="node"><b>② 预测</b>+1h / +2h / +3h<br>水量 + 水质负荷</div>
+          <div class="arrow">→</div>
+          <div class="node"><b>③ 预警</b>蓝 / 黄 / 橙 / 红<br>四级分级</div>
+          <div class="arrow">→</div>
+          <div class="node"><b>④ 预控</b>泵站协同建议<br>SWMM 在环验证</div>
+        </div>
+        <p class="mt14">评价指标：MAE / RMSE / NSE，统一以 persistence（当前值）为基线。</p>
+      </div>
+      <div class="pg">5 / 20</div>
+    </section>
+
+    <!-- 6 -->
+    <section class="slide">
+      <div class="kicker">数据 · 困局与破局</div>
+      <h2>泰和没有时序数据，怎么办？</h2>
+      <div class="body">
+        <p><b>困局：</b>组委会只给 Date1 静态骨架（26 泵站 / 40.5 m³/s）；国内管网 SCADA 无公开渠道。</p>
+        <div class="grid g3 mt14">
+          <div class="card tight"><h3 style="margin-top:0">① 方法有效性</h3><p class="small">Köln-Weiden 真实厂-网-雨数据（3 年 15min，结构与赛题同构）</p></div>
+          <div class="card tight"><h3 style="margin-top:0">② 场景完整性</h3><p class="small">官方骨架 + 自研模拟器（五机制）生成泰和全要素时序</p></div>
+          <div class="card tight"><h3 style="margin-top:0">③ 驱动真实性</h3><p class="small">上海水务局实测降雨（52 站 10min 级，1150 万行）驱动 2024 汛期 92 天场景</p></div>
+        </div>
+        <p class="small muted mt8">全部来源与许可登记于 DATA_CATALOG；泰和结果一律标注"模拟"。</p>
+      </div>
+      <div class="pg">6 / 20</div>
+    </section>
+
+    <!-- 7 -->
+    <section class="slide">
+      <div class="kicker">技术路线</div>
+      <h2>四层架构：从数据到决策</h2>
+      <div class="body">
+        <div class="flow" style="justify-content:flex-start">
+          <div class="node"><b>数据层</b>真实 / 模拟 / 官方降雨</div><div class="arrow">→</div>
+          <div class="node"><b>建模层</b>43 节点 / 42 管段 / 6 泵站<br>因果路由</div><div class="arrow">→</div>
+          <div class="node"><b>预测层</b>62 维特征<br>LightGBM + P10/P90</div><div class="arrow">→</div>
+          <div class="node"><b>应用层</b>预警 → 调度建议<br>服务化 + 容错 + 监控</div>
+        </div>
+        <ul class="mt14">
+          <li>模拟器五机制：旱天双峰 / RDII / 输送延迟 / 泵站启停 / 水质两源混合+冲击</li>
+          <li>参数逐项标注：规范取值（GB 50014）/ 文献典型值（BSM2 同量级）/ 经验设定</li>
+        </ul>
+      </div>
+      <div class="pg">7 / 20</div>
+    </section>
+
+    <!-- 8 -->
+    <section class="slide">
+      <div class="kicker">建模 · 防泄漏</div>
+      <h2>特征工程与切分：先保证"不偷看未来"</h2>
+      <div class="body">
+        <ul>
+          <li>特征：滞后 {1,2,3,4,6,8,12,24} 步 + 一阶差分 + 6 步滚动均值 + 小时/星期 = <b>62 维</b></li>
+          <li>发布时刻语义：t 只用 ≤t 的观测；目标为 t+h 真值；所有模型共用同一切分</li>
+          <li>切分：时间顺序 75%/25%；训练末端再剔除 h 步（防标签跨界泄漏）</li>
+        </ul>
+        <div class="note red"><b>我们修过一个真实泄漏 bug：</b>早期 <code>np.roll</code> 版本出现"提前量越长精度越高"的伪现象 → 改为零填充因果延迟 + 因果性单元测试。知道泄漏长什么样、怎么修、怎么防回归。</div>
+      </div>
+      <div class="pg">8 / 20</div>
+    </section>
+
+    <!-- 9 -->
+    <section class="slide">
+      <div class="kicker">模型</div>
+      <h2>LightGBM 主模型 + 四类基线对照</h2>
+      <div class="body">
+        <ul>
+          <li>主模型：LightGBM（400 棵 / lr 0.05 / 63 叶）+ 分位数 P10/P90（2×300 棵）</li>
+          <li>对照：persistence（当前值）/ 季节朴素 / MLP(64-32) / LSTM（2 层×64、3h 窗口、5.2 万参数）</li>
+          <li>选型理由：同精度档位更便宜（训练 3.3s vs 45.8s）、可解释（TreeSHAP）、原生支持缺测（容错基础）</li>
+        </ul>
+        <table class="mt14">
+          <tr><th>数据</th><th class="num">LightGBM</th><th class="num">LSTM</th><th class="num">当前值基线</th></tr>
+          <tr><td>Köln +1h / +2h / +3h</td><td class="num"><b>0.943 / 0.807 / 0.676</b></td><td class="num">0.922 / 0.787 / 0.637</td><td class="num">0.839 / 0.623 / 0.423</td></tr>
+        </table>
+      </div>
+      <div class="pg">9 / 20</div>
+    </section>
+
+    <!-- 10 -->
+    <section class="slide">
+      <div class="kicker">结果 · 真实数据</div>
+      <h2>Köln 真实厂网数据：方法有效性验证</h2>
+      <div class="body">
+        <div class="grid g3">
+          <div class="metric"><div class="v">0.943</div><div class="k">+1h NSE（MAE 15.3 L/s）</div></div>
+          <div class="metric"><div class="v">0.807</div><div class="k">+2h NSE（MAE 30.2 L/s）</div></div>
+          <div class="metric"><div class="v">0.676</div><div class="k">+3h NSE（MAE 40.5 L/s）</div></div>
+        </div>
+        <ul class="mt14">
+          <li>训练 78,815 / 测试 26,274 步（3 年 15min 数据，75/25 时间切分）</li>
+          <li>三个提前量全部超过当前值基线（0.839 / 0.623 / 0.423）</li>
+          <li>SHAP：历史进水 37% / 管网液位 34% / 降雨 15%——一体化信号主导</li>
+        </ul>
+      </div>
+      <div class="pg">10 / 20</div>
+    </section>
+
+    <!-- 11 -->
+    <section class="slide">
+      <div class="kicker">结果 · 模拟场景</div>
+      <h2>泰和场景：全链路打通（模拟口径）</h2>
+      <div class="body">
+        <div class="grid g3">
+          <div class="metric"><div class="v">0.983</div><div class="k">+1h NSE（MAPE 1.92%）</div></div>
+          <div class="metric"><div class="v">0.972</div><div class="k">+2h NSE（MAPE 2.19%）</div></div>
+          <div class="metric"><div class="v">0.956</div><div class="k">+3h NSE（MAPE 2.50%）</div></div>
+        </div>
+        <table class="mt14">
+          <tr><th>水质口径</th><th class="num">+1h</th><th class="num">+2h</th><th class="num">+3h</th></tr>
+          <tr><td>COD 浓度 NSE</td><td class="num">0.101</td><td class="num">−0.047</td><td class="num">−0.171</td></tr>
+          <tr><td>COD 负荷 NSE</td><td class="num"><b>0.801</b></td><td class="num"><b>0.774</b></td><td class="num"><b>0.767</b></td></tr>
+          <tr><td>氨氮负荷 NSE</td><td class="num"><b>0.914</b></td><td class="num"><b>0.914</b></td><td class="num"><b>0.914</b></td></tr>
+        </table>
+        <p class="small muted mt8">浓度不可靠如实保留；负荷（浓度×流量）是工艺冲击的直接量。模拟结果不代表实厂性能。</p>
+      </div>
+      <div class="pg">11 / 20</div>
+    </section>
+
+    <!-- 12 -->
+    <section class="slide">
+      <div class="kicker">压力测试</div>
+      <h2>极端暴雨：暴露失败 → 增广修复 → 诚实标注</h2>
+      <div class="body">
+        <table>
+          <tr><th>场景</th><th class="num">基准模型</th><th class="num">暴雨增广后</th></tr>
+          <tr><td>P=100a 设计暴雨（未见）</td><td class="num">NSE 0.149 / 峰值 −85%</td><td class="num"><b>NSE 0.954 / 峰值 −11%</b></td></tr>
+          <tr><td>台风"烟花"（2021 实况回放）</td><td class="num">0.917</td><td class="num">0.897</td></tr>
+        </table>
+        <ul class="mt14">
+          <li>设计暴雨由上海市暴雨强度公式 + 芝加哥雨型生成；台风用实测降雨驱动</li>
+          <li>P5/P50 暴雨加入训练后 P100 大幅改善——但 P5/P50 已入训，<b>不再充当独立测试</b></li>
+          <li>设计暴雨未经目标厂水力率定，不把模拟改善当作已实现的防涝收益</li>
+        </ul>
+      </div>
+      <div class="pg">12 / 20</div>
+    </section>
+
+    <!-- 13 -->
+    <section class="slide">
+      <div class="kicker">跨厂迁移</div>
+      <h2>两座真实厂互为源/目标：迁移有效但不及本地</h2>
+      <div class="body">
+        <table>
+          <tr><th>方向（+2h）</th><th class="num">零标签直迁</th><th class="num">目标厂本地</th><th class="num">当前值基线</th></tr>
+          <tr><td>Köln → 丹麦 DHI</td><td class="num">0.511</td><td class="num">0.677</td><td class="num">0.695</td></tr>
+          <tr><td>丹麦 DHI → Köln</td><td class="num">0.708</td><td class="num">0.837</td><td class="num">0.657</td></tr>
+        </table>
+        <ul class="mt14">
+          <li>两厂共同输入只有进水 + 降雨；进水除以发布时刻前 7 天滚动中位数（尺度只取已观测历史，零标签）</li>
+          <li>结论：新厂上线必须先用本厂数据评估 / 重训；两座厂不足以推断任意厂泛化</li>
+        </ul>
+      </div>
+      <div class="pg">13 / 20</div>
+    </section>
+
+    <!-- 14 -->
+    <section class="slide">
+      <div class="kicker">闭环 · 预警</div>
+      <h2>四级预警：120 分钟提前量</h2>
+      <div class="body">
+        <table>
+          <tr><th>级别</th><th>阈值（占设计能力）</th><th>协同调控建议</th></tr>
+          <tr><td>🔵 蓝色</td><td>≥ 60%</td><td>加强监视：上游液位与雨量趋势</td></tr>
+          <tr><td>🟡 黄色</td><td>≥ 80%</td><td>雨前预抽空：预降泵站前池液位</td></tr>
+          <tr><td>🟠 橙色</td><td>≥ 95%</td><td>彭越浦总站错峰：支线延迟 30~60min 开泵</td></tr>
+          <tr><td>🔴 红色</td><td>≥ 110%</td><td>全网限流 70% + 调蓄 + 厂内超越预案待命</td></tr>
+        </table>
+        <p class="small muted mt8">模拟测试段：黄色事件 7/7 命中、误报 6 段；橙/红无真实正例（不报告召回）。</p>
+      </div>
+      <div class="pg">14 / 20</div>
+    </section>
+
+    <!-- 15 -->
+    <section class="slide">
+      <div class="kicker">闭环 · 调度</div>
+      <h2>SWMM 在环：削峰—冒溢权衡前沿</h2>
+      <div class="body">
+        <table>
+          <tr><th>策略（P=50a）</th><th class="num">超阈体积</th><th class="num">前池冒溢</th></tr>
+          <tr><td>无调控</td><td class="num">2.09 万m³</td><td class="num">19.73 万m³</td></tr>
+          <tr><td>预见性·稳健（防冒溢保护）</td><td class="num"><b>1.50 万m³（−28%）</b></td><td class="num">不增</td></tr>
+          <tr><td>预见性·激进（限排）</td><td class="num"><b>0.22 万m³（−89%）</b></td><td class="num">+6.2%</td></tr>
+        </table>
+        <ul class="mt14">
+          <li>概化 EPA-SWMM 5 + pyswmm 逐步仿真，每 5min 下发泵指令</li>
+          <li>策略三段：雨前预抽空 → 峰中错峰限排 → 峰后恢复排空</li>
+          <li>价值：量化权衡前沿，运行方按受纳水体敏感性选运行点（绝对数值未经率定）</li>
+        </ul>
+      </div>
+      <div class="pg">15 / 20</div>
+    </section>
+
+    <!-- 16 -->
+    <section class="slide">
+      <div class="kicker">工程化</div>
+      <h2>现场容错与漂移监控：坏了还能用，且说明降级</h2>
+      <div class="body">
+        <div class="grid g3">
+          <div class="metric"><div class="v">0.773</div><div class="k">全液位计离线（容错）</div></div>
+          <div class="metric"><div class="v">0.708</div><div class="k">同场景常规补齐</div></div>
+          <div class="metric warn"><div class="v">0</div><div class="k">严格模式可服务率</div></div>
+        </div>
+        <ul class="mt14">
+          <li>质量控制：量程 / 跳变 / 卡死阈值从训练段学习；≤30min 缺测向前填充，更长判离线</li>
+          <li>缺测增广训练；过半液位计离线自动切"进水+降雨"简化模型；进水计全断拒绝预测（不编造）</li>
+          <li>漂移监控：滚动 1 天 MAE 超 1.5× 验证期=关注、超 2× 且不如当前值=失准 → 回退当前值</li>
+        </ul>
+      </div>
+      <div class="pg">16 / 20</div>
+    </section>
+
+    <!-- 17 -->
+    <section class="slide">
+      <div class="kicker">工程化</div>
+      <h2>可复现：一键链路 + 谱系核验 + CI</h2>
+      <div class="body">
+        <ul>
+          <li>全链路：<code>bash deliverables/run_all.sh</code>（数据 → 模拟 → 训练 → 服务工件 → 图表）</li>
+          <li>谱系：183 个源文件 / 模型 / 产物的 SHA-256 + 生成顺序 + 版本，<code>--verify</code> 逐项核验</li>
+          <li>测试：22 项单元测试 + GitHub Actions CI 每次 push 自动运行</li>
+          <li>演示：Streamlit 四页签看板（总览 / 厂网一张图 / 暴雨复盘 / 调控对比）+ FastAPI 服务</li>
+        </ul>
+        <div class="note teal">现场可核验：<code>python -m src.viz.lineage --verify</code> 全部通过。</div>
+      </div>
+      <div class="pg">17 / 20</div>
+    </section>
+
+    <!-- 18 -->
+    <section class="slide">
+      <div class="kicker">边界</div>
+      <h2>三条边界（主动声明）</h2>
+      <div class="body">
+        <div class="grid g3">
+          <div class="card tight"><h3 style="margin-top:0">① 模拟非实测</h3><p class="small">泰和为模拟场景；真实性能证据只有 Köln 等公开实测</p></div>
+          <div class="card tight"><h3 style="margin-top:0">② 区间未校准</h3><p class="small">P10–P90 覆盖率 67%~74%（名义 80%），不作保守上界</p></div>
+          <div class="card tight"><h3 style="margin-top:0">③ 未实厂率定</h3><p class="small">预警 / SWMM / 效益为概化与模拟推算，橙红无真实正例</p></div>
+        </div>
+        <h3>展望</h3>
+        <ul>
+          <li>申请上海政务"有条件开放"数据 → 实厂旁路验证</li>
+          <li>区间校准 + 暴雨覆盖率专项 · 接入降雨数值预报与在线学习 · MPC 泵群优化调度</li>
+        </ul>
+      </div>
+      <div class="pg">18 / 20</div>
+    </section>
+
+    <!-- 19 -->
+    <section class="slide">
+      <div class="kicker">总结</div>
+      <h2>一页话总结</h2>
+      <div class="body">
+        <ul>
+          <li><b>物理洞察：</b>输送延迟 0.3~3.6h——上游信号是厂前的"预告片"</li>
+          <li><b>数据方法论：</b>真实数据验证方法（Köln 0.943/0.807/0.676）+ 官方骨架/实测降雨模拟场景（0.983/0.972/0.956）+ 物理模型在环</li>
+          <li><b>工程闭环：</b>四级预警 → 泵站建议 → SWMM 权衡（−28% / −89%）→ 容错（0.773）+ 监控回退 + 谱系（183 项）</li>
+          <li><b>诚实边界：</b>模拟非实测 · 区间未校准 · 未实厂率定——全部主动声明</li>
+        </ul>
+      </div>
+      <div class="pg">19 / 20</div>
+    </section>
+
+    <!-- 20 -->
+    <section class="slide">
+      <div class="kicker">谢谢观看 · 敬请指正</div>
+      <h2>道法自然，无为而无不为</h2>
+      <div class="body">
+        <p class="lead">基于厂站网一体化的污水厂进厂水量水质超前感知与协同调控模型</p>
+        <p class="mt14">成果展示站：<a href="index.html">index</a> · 底层逻辑：<a href="logic.html">logic</a> · 结果全景：<a href="results.html">results</a> · 复习问答：<a href="qa.html">qa</a> · 材料下载：<a href="materials.html">materials</a></p>
+        <p class="small muted mt14">全部数字可在仓库溯源（reports/*.json）；交付文件哈希见谱系清单。</p>
+      </div>
+      <div class="pg">20 / 20</div>
+    </section>
+
+  </div>
+  <div class="ctl">
+    <button class="prev">← 上一页</button>
+    <span class="idx">1 / 20</span>
+    <button class="next">下一页 →</button>
+    <button class="fs">全屏 (F)</button>
+    <span class="hint">← → / 空格翻页 · F 全屏 · Home/End 首末页</span>
+  </div>
+</div>
+
+<footer>
+  第八届全国大学生市政环境 AI+ 创新实践能力大赛 · 产业赛道 · 主题七
+  <div class="row"><a href="index.html">返回首页</a> ｜ <a href="materials.html">材料下载</a></div>
+</footer>
+
+<script src="assets/site.js"></script>
+</body>
+</html>

@@ -5,7 +5,7 @@
 
 ---
 
-## 一、组委会官方数据（`data/raw/`，第一优先，完全合规）
+## 一、组委会提供的数据（`data/raw/`，使用许可按参赛规则复核）
 
 | 文件 | 内容 | 用途 |
 |---|---|---|
@@ -19,7 +19,7 @@
 
 ---
 
-## 二、外部真实数据集（`data/external/`，已后端下载，含许可）
+## 二、外部真实数据集（`data/external/`，来源已登记，使用许可逐项核对）
 
 ### 1. Graz-West R05 连续管网水力+污染物数据集（2008–2011）★最贴合
 - 目录：`zenodo_15783832_graz_sewer/`（原始 zip + `extracted/`）
@@ -59,16 +59,20 @@
 - 内容：含泵/堰/污染物的 SWMM `.inp` 示例（`model_full_features/pollutants/pump_setting/weir_setting`）
 - 用途：SWMM 建模范式参考、pyswmm 驱动生成物理一致数据
 
-### 7. Köln-Weiden 厂-网-雨一体化时序（2017 全年）★★ 结构最对口
-- 文件：`zenodo_6992694_koeln_wtp_network_rain/wtp_network_rain.csv`（105120 行，15min，CC-BY-4.0）
+### 7. Köln-Weiden 厂-网-雨一体化时序（2017-01-01 ~ 2019-12-31，连续 3 年）★★ 结构最对口
+- 文件：`zenodo_6992694_koeln_wtp_network_rain/wtp_network_rain.csv`（105 120 行 = 3 年 × 365 天 × 96 步/天，15min 等间隔无缺步，CC-BY-4.0）
+- 时间跨度：首行 `2017-01-01 00:00`，末行 `2019-12-31 23:45`；`src/models/forecast.py::load_koeln()` 读取全部 3 年，按时间顺序 75%/25% 切分：训练 2017-01 ~ 2019-04-02（78 819 步），测试 2019-04-02 ~ 2019-12-31（26 274 步，约 9 个月）
 - 来源：Zenodo 6992694（德国科隆 Weiden 污水厂）
 - 内容：**同一张表内含** 降雨强度 `rain_rate`、3 个管网节点液位 `Level_1/2/3`、调蓄管道液位 `level_storage_sewer`、**污水厂进水流量 `wtp_inflow`**
 - 用途：**主题七"厂站网一体化"的最佳真值样本**——一张表就复现"上游管网液位 + 降雨 → 厂前进水流量"的完整因果链，直接用于建模、验证提前量与雨天入流响应
 
-### 8. WWTP 进水量观测与处理数据（多站）
-- 目录：`zenodo_15301164_wwtp_inflow/`（observations/wwtp.csv、dmi.csv 气象、processed/data.csv；CC-BY-NC-4.0，仅学术非商用）
-- 来源：Zenodo 15301164
-- 用途：厂前进水流量真值 + 配套气象；进水预测标签
+### 8. 丹麦 DHI 污水厂进水观测（2023-11-07 ~ 2025-02-18，1 h）★ 已用于真实跨厂验证
+- 目录：`zenodo_15301164_wwtp_inflow/`（README.pdf、observations/wwtp.csv、observations/dmi.csv 气象、processed/data.csv）
+- 来源：DHI (2025), Zenodo 15301164, doi:10.5281/zenodo.15301164；**CC-BY-NC-4.0**，仅限非商业用途并须署名；商用或对外产品化须另获授权
+- 内容：`flow` 为污水厂进水 m³/h（厂名保密，位于丹麦），`acc_precip` 为 DMI 小时累计降雨 mm，另有气压/辐射/湿度/气温/地温
+- 质量：11 257 个小时，进水缺测 1 064 h（多段 7~22 h 缺口），最长连续段 100 h；观测原文件时间无时区
+- 用途：`src/models/real_transfer.py` 与 Köln 小时化序列互为源/目标做真实跨厂验证；两厂共同输入仅进水与降雨
+- 已核查未采用：Graz-West 15783832 据其元数据为 R05 流域合流制溢流构筑物出口监测，非污水厂进水；Milan 7116995 的流量文件 `zenodo_7116995_milan_wwtp/flow_2019-22.csv` 为两条处理线的**日处理量**（m³/d，意大利文日期），无小时级进水，也无配套降雨，无法做 1~3 h 超前验证
 
 ### 9. Milan 污水厂进出水多参数在线监测（2019–2022）
 - 目录：`zenodo_7116995_milan_wwtp_quality/`（CC-BY-4.0）

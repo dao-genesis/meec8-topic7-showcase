@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>结果全景 · 主题七成果展示站</title>
+<meta name="description" content="主题七全部实验图表与指标：Köln / 泰和预测、水质口径、概率区间、压力测试、跨厂迁移、SHAP、容错、SWMM、预警。24 张图 + 指标表。">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/favicon.svg">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+
+<header class="page"><div class="wrap">
+  <h1>📈 结果全景：24 张图表 + 全部实验数字</h1>
+  <p>所有数字出自 <code>reports/*.json</code>（脚本自动生成，不手改）· 每张图可点击放大 · 模拟口径均已标注</p>
+</div></header>
+
+<nav class="site"><div class="wrap">
+  <a class="home" href="index.html">首页</a>
+  <a href="logic.html">底层逻辑</a>
+  <a href="results.html">结果全景</a>
+  <a href="qa.html">复习问答</a>
+  <a href="slides.html">网页演示</a>
+  <a href="materials.html">材料与复现</a>
+</div></nav>
+
+<main>
+
+<!-- ===================== 1. 性能总表 ===================== -->
+<section id="headline">
+  <h2>一、性能总表（进水流量）</h2>
+  <div class="tablewrap card">
+    <table>
+      <tr><th>数据</th><th>超前</th><th class="num">LightGBM NSE</th><th class="num">LSTM NSE</th><th class="num">MLP NSE</th><th class="num">季节朴素</th><th class="num">当前值基线</th><th class="num">LGBM MAE</th></tr>
+      <tr><td>Köln（真实）</td><td>+1h</td><td class="num"><b>0.943</b></td><td class="num">0.922</td><td class="num">0.783</td><td class="num">−0.734</td><td class="num">0.839</td><td class="num">15.3 L/s</td></tr>
+      <tr><td>Köln（真实）</td><td>+2h</td><td class="num"><b>0.807</b></td><td class="num">0.787</td><td class="num">0.128</td><td class="num">−0.734</td><td class="num">0.623</td><td class="num">30.2 L/s</td></tr>
+      <tr><td>Köln（真实）</td><td>+3h</td><td class="num"><b>0.676</b></td><td class="num">0.637</td><td class="num">0.122</td><td class="num">−0.734</td><td class="num">0.423</td><td class="num">40.5 L/s</td></tr>
+      <tr><td>泰和（模拟）</td><td>+1h</td><td class="num"><b>0.983</b></td><td class="num">0.983</td><td class="num">0.980</td><td class="num">0.826</td><td class="num">0.762</td><td class="num">85.7 m³/h</td></tr>
+      <tr><td>泰和（模拟）</td><td>+2h</td><td class="num"><b>0.972</b></td><td class="num">0.970</td><td class="num">0.971</td><td class="num">0.826</td><td class="num">0.207</td><td class="num">98.6 m³/h</td></tr>
+      <tr><td>泰和（模拟）</td><td>+3h</td><td class="num"><b>0.956</b></td><td class="num">0.951</td><td class="num">0.959</td><td class="num">0.825</td><td class="num">−0.530</td><td class="num">113.9 m³/h</td></tr>
+    </table>
+    <p class="small muted">训练/测试按发布时间时间顺序 75%/25% 切分，训练标签早于首个测试发布时间；各模型共用同一切分与发布时刻语义。出处：<code>reports/forecast_metrics.json</code>、<code>reports/deep_forecast.json</code>。</p>
+  </div>
+
+  <h3>水质口径：浓度与负荷分开评估</h3>
+  <div class="tablewrap card">
+    <table>
+      <tr><th>目标（泰和模拟）</th><th>+1h</th><th>+2h</th><th>+3h</th><th>说明</th></tr>
+      <tr><td>COD 浓度 NSE</td><td class="num">0.101</td><td class="num">−0.047</td><td class="num">−0.171</td><td>不可靠，如实保留</td></tr>
+      <tr><td>COD 负荷 NSE</td><td class="num"><b>0.801</b></td><td class="num"><b>0.774</b></td><td class="num"><b>0.767</b></td><td>负荷=浓度×流量，主要增益来自流量</td></tr>
+      <tr><td>氨氮浓度 NSE</td><td class="num">0.336</td><td class="num">0.301</td><td class="num">0.260</td><td>弱可预测</td></tr>
+      <tr><td>氨氮负荷 NSE</td><td class="num"><b>0.914</b></td><td class="num"><b>0.914</b></td><td class="num"><b>0.914</b></td><td>随提前量变化小（模拟机理所致）</td></tr>
+    </table>
+    <p class="small muted">负荷成绩不能替代浓度评估；真实水质可预测性需实厂时序进一步验证。</p>
+  </div>
+
+  <h3>概率区间（P10–P90，名义 80%）</h3>
+  <div class="tablewrap card">
+    <table>
+      <tr><th>场景</th><th class="num">+1h PICP</th><th class="num">+2h PICP</th><th class="num">+3h PICP</th><th>结论</th></tr>
+      <tr><td>Köln（真实）</td><td class="num">71.5%</td><td class="num">72.1%</td><td class="num">73.8%</td><td rowspan="2">六组全部<b>欠覆盖</b> → 未校准，不作保守上界</td></tr>
+      <tr><td>泰和（模拟）</td><td class="num">69.1%</td><td class="num">67.5%</td><td class="num">68.4%</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ===================== 2. 数据组图 ===================== -->
+<section id="data-figs">
+  <h2>二、数据体系图表</h2>
+  <div class="grid g2">
+    <figure><img src="assets/figures/fig01_上海降雨概览.png" alt="上海降雨概览" loading="lazy"><figcaption>fig01 · 上海市水务局「水情信息」日雨量全景与 2024 汛期 10 分钟级序列（官方实测，无条件开放）</figcaption></figure>
+    <figure><img src="assets/figures/fig02_泵站配泵能力.png" alt="泵站配泵能力" loading="lazy"><figcaption>fig02 · Date1 官方 26 座泵站配泵能力（合计约 40.5 m³/s）</figcaption></figure>
+    <figure><img src="assets/figures/fig03_管网拓扑骨架.png" alt="管网拓扑骨架" loading="lazy"><figcaption>fig03 · 概化管网骨架：43 节点 / 42 管段 / 6 泵站（树状拓扑，箭头为流向）</figcaption></figure>
+    <figure><img src="assets/figures/fig04_实测降雨驱动模拟场景.png" alt="实测降雨驱动模拟场景" loading="lazy"><figcaption>fig04 · 上海实测降雨驱动的泰和汛期场景（2024-06 梅雨期两周：雨强 → 进水流量 → COD）</figcaption></figure>
+  </div>
+</section>
+
+<!-- ===================== 3. 预测组图 ===================== -->
+<section id="forecast-figs">
+  <h2>三、超前预测图表</h2>
+  <div class="grid g2">
+    <figure><img src="assets/figures/fig05_Koeln超前预测.png" alt="Köln 超前预测" loading="lazy"><figcaption>fig05 · Köln 真实数据 +1h 进水预测（测试集末 7 天）：日周期与降雨响应</figcaption></figure>
+    <figure><img src="assets/figures/fig06_特征重要性.png" alt="特征重要性" loading="lazy"><figcaption>fig06 · Köln +1h 模型特征重要性 Top15（上游液位与降雨滞后项）</figcaption></figure>
+    <figure><img src="assets/figures/fig07_泰和场景预测.png" alt="泰和场景预测" loading="lazy"><figcaption>fig07 · 泰和模拟场景 +2h 进水预测（测试集末 7 天）</figcaption></figure>
+    <figure><img src="assets/figures/fig10_概率预测区间.png" alt="概率预测区间" loading="lazy"><figcaption>fig10 · 概率预测：Köln +1h P10–P90 分位数区间（覆盖率 71.5%，未校准）</figcaption></figure>
+    <figure><img src="assets/figures/fig11_多模型对比.png" alt="多模型对比" loading="lazy"><figcaption>fig11 · 五模型 NSE 对比（左：Köln 真实；右：泰和模拟；+1h/+2h/+3h）</figcaption></figure>
+    <figure><img src="assets/figures/fig15_LSTM预测曲线对比.png" alt="LSTM 预测曲线对比" loading="lazy"><figcaption>fig15 · 泰和 +2h 曲线对比（真值 / LightGBM / LSTM / MLP / 季节朴素；下图为最强降雨事件放大）</figcaption></figure>
+    <figure><img src="assets/figures/fig20_预测接口自测.png" alt="预测接口自测" loading="lazy"><figcaption>fig20 · 预测服务接口自测（/forecast 严格模式与容错模式返回示例）</figcaption></figure>
+  </div>
+</section>
+
+<!-- ===================== 4. 效率组 ===================== -->
+<section id="runtime-figs">
+  <h2>四、训练 / 运行耗时（2 线程 CPU，无 GPU）</h2>
+  <div class="grid g3">
+    <figure><img src="assets/figures/fig16_模型训练耗时.png" alt="模型训练耗时" loading="lazy"><figcaption>fig16 · 训练耗时（对数轴）与耗时-精度权衡</figcaption></figure>
+    <figure><img src="assets/figures/fig18_模型运行耗时.png" alt="模型运行耗时" loading="lazy"><figcaption>fig18 · 整段测试集批量推理耗时（非单请求延迟）</figcaption></figure>
+    <figure><img src="assets/figures/fig17_执行时长终端记录.png" alt="执行时长终端记录" loading="lazy"><figcaption>fig17 · 全链路执行时长终端记录（自动排版自 <code>reports/logs/</code>）</figcaption></figure>
+  </div>
+  <div class="tablewrap card">
+    <table>
+      <tr><th>数据</th><th>超前</th><th class="num">LightGBM 训练</th><th class="num">LightGBM 推理</th><th class="num">LSTM 训练</th><th class="num">LSTM 推理</th></tr>
+      <tr><td>Köln</td><td>+60 min</td><td class="num">3.3 s</td><td class="num">0.20 s</td><td class="num">45.8 s</td><td class="num">0.24 s</td></tr>
+      <tr><td>泰和</td><td>+60 min</td><td class="num">1.7 s</td><td class="num">0.06 s</td><td class="num">63.6 s</td><td class="num">0.18 s</td></tr>
+    </table>
+    <p class="small muted">同精度档位下树模型训练便宜一个数量级——这是选型的直接依据之一。</p>
+  </div>
+</section>
+
+<!-- ===================== 5. 压力与迁移 ===================== -->
+<section id="stress-figs">
+  <h2>五、极端场景与跨厂迁移</h2>
+  <div class="grid g2">
+    <figure><img src="assets/figures/fig13_极端场景压力测试.png" alt="极端场景压力测试" loading="lazy"><figcaption>fig13 · P=100a 设计暴雨过程（峰值误差自动计算）与跨场景泛化 NSE</figcaption></figure>
+    <figure><img src="assets/figures/fig21_跨模拟厂迁移.png" alt="跨模拟厂迁移" loading="lazy"><figcaption>fig21 · 跨模拟厂迁移对照（共享生成器，仅说明量纲风险，非真实泛化证据）</figcaption></figure>
+    <figure><img src="assets/figures/fig26_真实跨厂验证.png" alt="真实跨厂验证" loading="lazy"><figcaption>fig26 · 两座真实污水厂（Köln ↔ 丹麦 DHI）互为目标的跨厂验证 NSE</figcaption></figure>
+  </div>
+  <div class="tablewrap card">
+    <table>
+      <tr><th>场景</th><th>洪峰真值</th><th class="num">基准 NSE</th><th class="num">洪峰误差</th><th>增广后</th></tr>
+      <tr><td>P=5a 设计暴雨</td><td class="num">34,782 m³/h</td><td class="num">0.271</td><td class="num">−76%</td><td>（进入训练集，不再独立）</td></tr>
+      <tr><td>P=50a 设计暴雨</td><td class="num">50,530 m³/h</td><td class="num">0.167</td><td class="num">−83%</td><td>（进入训练集，不再独立）</td></tr>
+      <tr><td>P=100a 设计暴雨</td><td class="num">55,271 m³/h</td><td class="num">0.149</td><td class="num">−85%</td><td><b>NSE 0.954 / 峰值误差 −11%</b></td></tr>
+      <tr><td>台风"烟花"（2021 实况）</td><td class="num">8,484 m³/h</td><td class="num">0.917</td><td class="num">−2%~−5%</td><td>0.897 / −3%~+9%</td></tr>
+    </table>
+    <p class="small muted">设计暴雨未经目标厂水力率定，不把模拟改善当作已实现的防涝收益。出处：<code>reports/stress_test.json</code>。</p>
+  </div>
+  <div class="tablewrap card">
+    <table>
+      <tr><th>真实跨厂（+2h）</th><th class="num">零标签直迁</th><th class="num">+前7天续训</th><th class="num">目标厂本地</th><th class="num">当前值基线</th></tr>
+      <tr><td>Köln → 丹麦</td><td class="num">0.511</td><td class="num">0.622</td><td class="num">0.677</td><td class="num">0.695</td></tr>
+      <tr><td>丹麦 → Köln</td><td class="num">0.708</td><td class="num">0.717</td><td class="num">0.837</td><td class="num">0.657</td></tr>
+    </table>
+    <p class="small muted">两座真实厂不足推断任意厂泛化；结论是"迁移有效但不及本地训练，新厂上线先旁路评估/重训"。出处：<code>reports/real_transfer.json</code>。</p>
+  </div>
+</section>
+
+<!-- ===================== 6. 解释性 ===================== -->
+<section id="shap-figs">
+  <h2>六、SHAP 可解释性</h2>
+  <div class="grid g3">
+    <figure><img src="assets/figures/fig23_SHAP全局解释.png" alt="SHAP 全局解释" loading="lazy"><figcaption>fig23 · 单特征 beeswarm 与晴/雨分层贡献占比</figcaption></figure>
+    <figure><img src="assets/figures/fig24_SHAP暴雨事件分解.png" alt="SHAP 暴雨事件分解" loading="lazy"><figcaption>fig24 · 测试段最大日雨量事件：点预测与类别贡献随时间变化</figcaption></figure>
+    <figure><img src="assets/figures/fig25_SHAP单次预测瀑布图.png" alt="SHAP 单次预测瀑布图" loading="lazy"><figcaption>fig25 · 单次发布的瀑布图：从基线 E[f(X)] 到该次预测</figcaption></figure>
+  </div>
+  <div class="tablewrap card">
+    <table>
+      <tr><th>站点</th><th class="num">解释样本</th><th class="num">加性误差上限</th><th class="num">历史进水</th><th class="num">管网液位</th><th class="num">降雨</th><th class="num">时刻/星期</th></tr>
+      <tr><td>Köln 真实（+2h）</td><td class="num">26,273</td><td class="num">2.0e-11</td><td class="num">37%</td><td class="num">34%</td><td class="num">15%</td><td class="num">14%</td></tr>
+      <tr><td>泰和模拟（+2h）</td><td class="num">6,613</td><td class="num">4.7e-11</td><td class="num">5%</td><td class="num">80%</td><td class="num">12%</td><td class="num">3%</td></tr>
+    </table>
+    <p class="small muted">近 6 步有雨时 Köln 降雨占比升至 28%，与雨天入流机理方向一致。SHAP 是模型输出的相关性分摊，不等于物理因果。出处：<code>reports/shap_summary.json</code>。</p>
+  </div>
+</section>
+
+<!-- ===================== 7. 预警与调度 ===================== -->
+<section id="warning-figs">
+  <h2>七、预警与 SWMM 调度</h2>
+  <div class="grid g2">
+    <figure><img src="assets/figures/fig09_预警时间线.png" alt="预警时间线" loading="lazy"><figcaption>fig09 · 四级预警时间线（模型 P90 预测驱动，2024-08 测试段，提前量 120min）</figcaption></figure>
+    <figure><img src="assets/figures/fig14_SWMM调度对比.png" alt="SWMM 调度对比" loading="lazy"><figcaption>fig14 · SWMM 在环调度：预见性滚动调度将厂前入流控制在安全阈值附近（P=50a）</figcaption></figure>
+  </div>
+  <div class="tablewrap card">
+    <table>
+      <tr><th>预警级</th><th>阈值（占设计能力）</th><th>协同调控建议</th><th class="num">模拟测试段表现</th></tr>
+      <tr><td>🔵 蓝色</td><td>≥ 60%</td><td>加强监视：关注上游液位与雨量趋势</td><td class="num">—</td></tr>
+      <tr><td>🟡 黄色</td><td>≥ 80%</td><td>雨前预抽空：预降泵站前池液位</td><td class="num">7/7 命中 · 误报 6 段</td></tr>
+      <tr><td>🟠 橙色</td><td>≥ 95%</td><td>彭越浦总站错峰：支线泵站延迟 30~60min 开泵</td><td class="num">无真实正例</td></tr>
+      <tr><td>🔴 红色</td><td>≥ 110%</td><td>全网限流：上游泵站按能力 70% 限排 + 调蓄</td><td class="num">无真实正例</td></tr>
+    </table>
+    <p class="small muted">预警结论仅限模拟场景；橙/红等级不能报告召回。出处：<code>reports/benefit_summary.json</code>。</p>
+  </div>
+  <div class="tablewrap card">
+    <table>
+      <tr><th>SWMM 策略（P=50a）</th><th class="num">峰值入流</th><th class="num">超阈历时</th><th class="num">超阈体积</th><th class="num">前池冒溢体积</th></tr>
+      <tr><td>无调控（泵常开）</td><td class="num">5.80 m³/s</td><td class="num">5.6 h</td><td class="num">2.09 万m³</td><td class="num">19.73 万m³</td></tr>
+      <tr><td>本地液位规则</td><td class="num">5.80</td><td class="num">4.9 h</td><td class="num">1.76 万m³</td><td class="num">20.38 万m³</td></tr>
+      <tr><td>预见性滚动（防冒溢保护）</td><td class="num">5.80</td><td class="num">4.6 h</td><td class="num"><b>1.50 万m³（−28%）</b></td><td class="num">19.73 万m³（不增）</td></tr>
+      <tr><td>预见性滚动（激进限排）</td><td class="num"><b>4.99</b></td><td class="num"><b>2.8 h</b></td><td class="num"><b>0.22 万m³（−89%）</b></td><td class="num">20.95 万m³（+6.2%）</td></tr>
+    </table>
+    <p class="small muted">概化参数未经率定，价值在策略间相对比较与"削峰-冒溢权衡前沿"。出处：<code>reports/swmm_control.json</code>。</p>
+  </div>
+</section>
+
+<!-- ===================== 8. 容错 ===================== -->
+<section id="robust">
+  <h2>八、现场容错（Köln 真实数据 +2h 故障注入回放）</h2>
+  <div class="tablewrap card">
+    <table>
+      <tr><th>场景</th><th class="num">严格模式可服务率</th><th class="num">常规补齐 NSE</th><th class="num">容错模式 NSE</th></tr>
+      <tr><td>无扰动</td><td class="num">1.00</td><td class="num">0.807</td><td class="num">0.808</td></tr>
+      <tr><td>随机缺测 30%</td><td class="num">0.00</td><td class="num">0.790</td><td class="num">0.789</td></tr>
+      <tr><td>1% 尖峰 / 归零</td><td class="num">1.00</td><td class="num">0.763</td><td class="num"><b>0.797</b></td></tr>
+      <tr><td>进水计间歇离线（4h 块，约 20%）</td><td class="num">0.62</td><td class="num">0.772</td><td class="num"><b>0.805</b></td></tr>
+      <tr><td>单个液位计整段离线</td><td class="num">0.00</td><td class="num">0.778</td><td class="num"><b>0.811</b></td></tr>
+      <tr><td>全部液位计离线</td><td class="num">0.00</td><td class="num">0.708</td><td class="num"><b>0.773</b></td></tr>
+      <tr><td>泰和·全部液位计离线</td><td class="num">0.00</td><td class="num">−0.939</td><td class="num"><b>0.972</b></td></tr>
+    </table>
+    <p class="small muted">Köln +2h（n=26,273）故障注入回放，NSE 均为测试段口径。质量控制阈值从训练段学习；≤30min 缺测向前填充，更长判离线；过半液位计离线自动切换"进水+降雨"简化模型；进水计整窗无读数拒绝预测（不编造）。出处：<code>reports/robustness.json</code>。</p>
+  </div>
+  <div class="card tight mt14">
+    <p class="small"><b>漂移监控回放</b>：液位计缓慢漂移（起点 2019-07-02 11:45），滚动 1 天 MAE 超验证期 1.5 倍=关注、超 2 倍且不如当前值=失准并回退当前值输出；本次回放 <b>11 天后</b>首次失准报警——慢漂移需累积数天，回退只止损，根本解是修传感器 + 重训。出处：<code>src/serving/monitor.py</code>、<code>reports/robustness.json</code>。</p>
+  </div>
+</section>
+
+<!-- ===================== 9. 工程与异常 ===================== -->
+<section id="engineering">
+  <h2>九、工程化与异常分类</h2>
+  <div class="grid g2">
+    <figure><img src="assets/figures/fig19_成果谱系.png" alt="成果谱系" loading="lazy"><figcaption>fig19 · 成果谱系：183 个源文件/模型/产物的 SHA-256 与生成顺序（<code>--verify</code> 逐项核验）</figcaption></figure>
+    <figure><img src="assets/figures/fig12_水质负荷口径.png" alt="水质负荷口径" loading="lazy"><figcaption>fig12 · 水质预测口径：COD / 氨氮负荷显著优于浓度（模拟场景）</figcaption></figure>
+  </div>
+  <div class="card tight mt14">
+    <p class="small"><b>污染冲击异常分类（模拟场景）</b>：以在线可观测水质（COD、氨氮、pH、SS）与流量的滞后/差分/3h 滚动 z 分数特征训练 LightGBM 分类器，识别模拟 shock_event 标签——测试段步级 precision/recall/F1 = 1.0、事件级首次报警延迟 0 min。<b>但测试段仅 1 次事件</b>，只证明链路可行性，不代表真实工况性能；实厂需多厂真实异常数据重新标定阈值与误报率。出处：<code>reports/anomaly_metrics.json</code>。</p>
+  </div>
+  <div class="card tight mt14">
+    <p class="small"><b>短临雨预报输入实验（+2h，模拟口径）</b>：无雨预报 NSE 0.972 / 含噪（σ=0.3）0.982 / 理想 0.983；接入雨预报是补齐短历时尖峰预警能力的第一优先级接口（把未来 0~2h 累计雨量加入特征）。出处：<code>reports/rain_forecast_exp.json</code>。</p>
+  </div>
+</section>
+
+<section id="source">
+  <h2>十、数字溯源约定</h2>
+  <div class="card tight">
+    <ul class="small">
+      <li>所有性能数字：<code>reports/forecast_metrics.json</code> / <code>reports/deep_forecast.json</code>（脚本自动生成，不手改）；</li>
+      <li>全部实验结论：对应 <code>reports/*.json</code>；汇总版：<a href="downloads/实验结果.md">实验结果.md</a>；</li>
+      <li>交付文件完整性：<a href="downloads/lineage.json">lineage.json</a>（183 项 SHA-256）+ <code>python -m src.viz.lineage --verify</code>；</li>
+      <li>本页表格为阅读友好版；与 JSON 有出入时以 JSON 为准。</li>
+    </ul>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  第八届全国大学生市政环境 AI+ 创新实践能力大赛 · 产业赛道 · 主题七
+  <div class="row"><a href="index.html">返回首页</a> ｜ <a href="logic.html">底层逻辑</a> ｜ <a href="materials.html">材料下载</a></div>
+</footer>
+
+<script src="assets/site.js"></script>
+</body>
+</html>

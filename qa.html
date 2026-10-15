@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>复习问答 · 主题七成果展示站</title>
+<meta name="description" content="主题七复习问答 36 问：数据合规 / 方法技术 / 应用落地 / 局限边界 / 行业展望——每问一句话答 + 展开 + 证据出处。">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/favicon.svg">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+
+<header class="page"><div class="wrap">
+  <h1>❓ 复习问答：36 问实战答法</h1>
+  <p>用法：先自己答一遍"一句话答案"，再点开核对 · 证据版 23 问见 <a href="downloads/路演专家问答.md" style="color:#e0f2f1;text-decoration:underline">路演专家问答.md</a></p>
+</div></header>
+
+<nav class="site"><div class="wrap">
+  <a class="home" href="index.html">首页</a>
+  <a href="logic.html">底层逻辑</a>
+  <a href="results.html">结果全景</a>
+  <a href="qa.html">复习问答</a>
+  <a href="slides.html">网页演示</a>
+  <a href="materials.html">材料与复现</a>
+</div></nav>
+
+<main>
+
+<div class="card tight">
+  <p class="small"><b>回答纪律</b>：① 先给一句话结论，再展开 2~3 句证据；② 开口先说数据性质（真实 / 模拟）；③ 每条结论说清边界；④ 不会的问题：承认 → 给判断思路 → 收口（不编数字）。</p>
+</div>
+
+<!-- ================= A ================= -->
+<section id="catA">
+  <h2>A · 数据与合规（Q1–Q6）</h2>
+
+  <details class="qa"><summary>Q1 你们的数据都是哪来的？<span class="qa-cat">数据</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>两类——真实数据（官方骨架、上海实测降雨、国际公开厂网数据集）与模拟数据（泰和全要素时序），逐项登记在 DATA_CATALOG。</p>
+    <p>泰和厂/网时序是官方骨架 + 实测降雨驱动的模拟器生成的，报告里所有泰和结果都标"模拟"；方法有效性用 Köln 真实厂网数据验证。</p>
+    <p class="small muted">证据：<code>data/DATA_CATALOG.md</code> · 报告 §2.3 对应表 · <a href="logic.html#data">底层逻辑·数据破局</a></p>
+  </div></details>
+
+  <details class="qa"><summary>Q2 泰和没有真实时序，你们的结论可信吗？<span class="qa-cat">数据</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>把"可信"拆成两件事——方法有效性靠真实数据（Köln），场景完整性靠模拟（泰和），两者分开声称。</p>
+    <p>真实性能证据一律以 Köln 为准（+1/2/3h NSE 0.943/0.807/0.676）；泰和模拟只验证全链路工程可行性与极端场景敏感性，不代表实厂性能——这是主动写进报告与问答文档的边界。</p>
+    <p class="small muted">证据：报告 §2.3 声明 · 路演问答 Q1/Q3</p>
+  </div></details>
+
+  <details class="qa"><summary>Q3 为什么用德国科隆的数据？和上海有什么关系？<span class="qa-cat">数据</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>它是公开数据里唯一"厂-站-网-雨"结构与赛题完全同构的真实数据集（同一张表：上游管网液位×3 + 调蓄液位 + 降雨 + 厂前进水，3 年 15min 连续）。</p>
+    <p>国内管网 SCADA 不公开；科隆数据 CC-BY 可复现；用它证明"上游液位+降雨→厂前进水"方法有效，再把同一套方法应用到泰和场景；另做了两座真实厂跨厂迁移验证。</p>
+    <p class="small muted">证据：DATA_CATALOG 第 7 项 · 报告 §4.3</p>
+  </div></details>
+
+  <details class="qa"><summary>Q4 模拟数据怎么保证不是"自说自话"？<span class="qa-cat">数据</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>三层防御——机制有依据、结果与真实数据校核、方法有效性不在模拟上声称。</p>
+    <p>五机制参数逐项标注"规范取值 / 文献典型值 / 经验设定"；模拟结果与 BSM2 形态、Köln 雨天响应量级校核；从不把泰和模拟数字当实厂性能。</p>
+    <p class="small muted">证据：<code>docs/数据说明.md</code> 五机制表 · 报告 §3.2</p>
+  </div></details>
+
+  <details class="qa"><summary>Q5 数据许可和知识产权有没有问题？<span class="qa-cat">数据</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>逐项登记、合规优先，不确定的一律不用。</p>
+    <p>全部来自官方开放平台或开放许可数据集（Köln CC-BY、丹麦 CC-BY-NC 仅非商业、上海水情无条件开放）；授权不清的三方数据明确不取；提交前复核条款。</p>
+    <p class="small muted">证据：DATA_CATALOG · 路演问答 Q14</p>
+  </div></details>
+
+  <details class="qa"><summary>Q6 有没有拿到国内真实厂网数据？<span class="qa-cat">数据</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>没有可用的——组委会未提供时序，国内管网/厂 SCADA 无公开渠道。</p>
+    <p>做过渠道矩阵调研（政府开放平台 / 气象 / 统计年鉴 / 科研数据集 / 人脉），结论是国内无管网级时序公开数据；一条人脉线索经核实属于另一座厂、与泰和无关，无法作为本作品证据，未采用——这是数据方法论里最诚实的一条。</p>
+    <p class="small muted">证据：<code>docs/管网数据调研分析报告.md</code>、<code>docs/数据战略_反向解构.md</code></p>
+  </div></details>
+</section>
+
+<!-- ================= B ================= -->
+<section id="catB">
+  <h2>B · 方法与技术（Q7–Q20）</h2>
+
+  <details class="qa"><summary>Q7 为什么选 LightGBM 而不是深度学习？<span class="qa-cat">方法</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>同精度档位下更便宜、更稳、可解释，且原生支持缺测。</p>
+    <p>Köln 上 0.943/0.807/0.676 不低于 LSTM（0.922/0.787/0.637），训练 3.3s vs 45.8s；表格滞后特征 + 非线性阈值（泵启停）是树的强项；NaN 走单独分支是容错基础；TreeSHAP 可精确分解。LSTM/MLP 都跑了对照，不是没做。</p>
+    <p class="small muted">证据：报告 §4.5 · <code>reports/deep_forecast.json</code></p>
+  </div></details>
+
+  <details class="qa"><summary>Q8 你们的核心创新点是什么？<span class="qa-cat">方法</span></summary>
+  <div class="a">
+    <p><b>一句话（三个）：</b>① 数据方法论——"真实数据验证方法 + 官方骨架/实测降雨模拟场景 + 物理模型在环"，把"无泰和时序"约束转化为可复现路线；② 面向现场的工程化闭环——因果路由严格超前、传感器故障容错、漂移监控回退、谱系核验；③ 削峰-冒溢权衡的量化（SWMM 在环三策略对比）。</p>
+    <p>按听众选重点：偏技术讲①③，偏应用讲②。</p>
+  </div></details>
+
+  <details class="qa"><summary>Q9 特征工程怎么做的？<span class="qa-cat">方法</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>对目标量和每个输入量统一构造 8 个滞后 + 一阶差分 + 6 步滚动均值，加时刻与星期，共 62 维。</p>
+    <p>滞后集 {1,2,3,4,6,8,12,24} 覆盖 5min~2h 多时间尺度；发布时刻语义——t 只用 ≤t 的观测，目标 t+h。</p>
+    <p class="small muted">证据：<code>src/models/forecast.py::feature_rows</code></p>
+  </div></details>
+
+  <details class="qa"><summary>Q10 怎么防止数据泄漏？<span class="qa-cat">方法</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>时间顺序切分 + 训练末端按提前量剔除跨界标签 + 因果性单元测试；我们还修过一个真实泄漏 bug。</p>
+    <p>早期 <code>np.roll</code> 版本出现"提前量越长精度越高"的伪现象，改为零填充因果延迟并留测试防回归；调参不在测试集上做。</p>
+    <p class="small muted">证据：报告 §4.4 注 · <code>tests/test_simulation.py</code></p>
+  </div></details>
+
+  <details class="qa"><summary>Q11 NSE 是什么？为什么用它？<span class="qa-cat">方法</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>纳什效率系数——1 完美、0 相当于用均值、负值不如均值；水文领域标准指标。</p>
+    <p>同时报 MAE/RMSE/MAPE；persistence（当前值）为统一基线——"比当前值好多少"是现场最关心的。</p>
+  </div></details>
+
+  <details class="qa"><summary>Q12 P10–P90 区间为什么覆盖率不足？<span class="qa-cat">方法</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>未校准（71.5% vs 名义 80%），如实标注，上线前需单独校准。</p>
+    <p>分位数回归直接输出、未做后校准；计划留出校准集做 conformal/isotonic + 暴雨场景单独检验；不把 P90 当保守上界。</p>
+    <p class="small muted">证据：报告 §4.5(2) · 路演问答 Q8</p>
+  </div></details>
+
+  <details class="qa"><summary>Q13 为什么 COD 浓度预测不可靠，负荷却可以？<span class="qa-cat">方法</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>负荷 = 浓度 × 流量，流量可预测性强；负荷成绩主要来自流量成分，浓度短板不掩盖。</p>
+    <p>浓度 +2h NSE −0.047（不可靠）；负荷 0.774~0.801；氨氮负荷 0.914；报告分开评估两种口径。</p>
+    <p class="small muted">证据：报告 §4.6 · 路演问答 Q7/Q17</p>
+  </div></details>
+
+  <details class="qa"><summary>Q14 SHAP 说明了什么？<span class="qa-cat">方法</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>模型输出的相关性分摊、不是因果——Köln 历史进水 37%、管网液位 34%、降雨 15%；雨天降雨升至 28%，与机理方向一致。</p>
+    <p>TreeSHAP 精确加性（误差 2e-11 L/s）；只解释测试段发布时刻；不声称因果。</p>
+    <p class="small muted">证据：报告 §4.9 · <code>reports/shap_summary.json</code></p>
+  </div></details>
+
+  <details class="qa"><summary>Q15 极端暴雨下模型会怎样？<span class="qa-cat">方法</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>基准模型在未见过的 P100 设计暴雨上明显低估（NSE 0.149、峰值 −85%）；加入 P5/P50 暴雨增广后 P100 改善到 0.954（P5/P50 已入训、不再独立）。</p>
+    <p>台风"烟花"实况回放 0.917；设计暴雨未经率定，不宣称防涝收益。</p>
+    <p class="small muted">证据：报告 §4.7 · <code>reports/stress_test.json</code></p>
+  </div></details>
+
+  <details class="qa"><summary>Q16 换个厂能直接用吗？<span class="qa-cat">方法</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>零标签迁移有效但不如本地训练；新厂上线必须先用本厂数据旁路评估/重训。</p>
+    <p>两座真实厂互为源/目标：+2h 直迁 0.511/0.708，本地 0.677/0.837；Köln→丹麦方向未超过 persistence；+前 7 天续训可部分弥补；新厂有现成重训命令（<code>--csv/--exog</code>）。</p>
+    <p class="small muted">证据：报告 §4.10 · 路演问答 Q3/Q22</p>
+  </div></details>
+
+  <details class="qa"><summary>Q17 传感器坏了怎么办？<span class="qa-cat">方法</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>质量控制先标缺测；≤30min 向前填充、更长判离线；模型用缺测增广训练；过半液位计离线自动换简化模型；进水计全断则拒绝预测。</p>
+    <p>Köln +2h 全液位计离线 0.773（常规补齐只有 0.708）；严格模式同场景可服务率 0——容错是净增量。</p>
+    <p class="small muted">证据：报告容错节 · 路演问答 Q19 · <code>reports/robustness.json</code></p>
+  </div></details>
+
+  <details class="qa"><summary>Q18 上线后效果变差怎么办？<span class="qa-cat">方法</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>预测到期即与实测比对；滚动 1 天 MAE 超验证期 1.5 倍=关注，超 2 倍且不如当前值=失准 → 自动回退当前值并提示检查。</p>
+    <p>液位计漂移回放 11 天后才首次失准报警——慢漂移需累积，回退只止损，根本解是修传感器 + 重训。</p>
+    <p class="small muted">证据：路演问答 Q20 · <code>src/serving/monitor.py</code></p>
+  </div></details>
+
+  <details class="qa"><summary>Q19 你们怎么保证可复现？<span class="qa-cat">方法</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>固定依赖版本 + 一键脚本 + 随机种子固定 + 谱系 183 个文件 SHA-256 逐项核验 + CI 22 个测试。</p>
+    <p>现场可演示 <code>python -m src.viz.lineage --verify</code>；图表由 <code>bash deliverables/run_all.sh</code> 重建；LF 统一保证跨平台核验一致。</p>
+    <p class="small muted">证据：<code>reports/lineage.json</code> · <code>操作流程讲解.md</code></p>
+  </div></details>
+
+  <details class="qa"><summary>Q20 为什么上游信号能超前？<span class="qa-cat">方法</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>物理输送延迟——污水从管网节点到厂前要走 0.3~3.6 小时（0.8 m/s、0.8~10.5 km），上游液位/流量就是厂前的"预告片"。</p>
+    <p>模拟器用因果路由（各汇水区按 τ 延迟叠加、零填充不回绕）严格保证上游信号不含未来信息——这是"超前感知"的物理基础与因果纪律。</p>
+    <p class="small muted">证据：报告 §3.2 · <code>src/simulation/timeseries.py</code></p>
+  </div></details>
+</section>
+
+<!-- ================= C ================= -->
+<section id="catC">
+  <h2>C · 应用与落地（Q21–Q28）</h2>
+
+  <details class="qa"><summary>Q21 预测出来以后对现场有什么用？<span class="qa-cat">应用</span></summary>
+  <div class="a">
+    <p><b>一句话：</b><code>/situation</code> 一次返回三段——现在（进水占设计能力比例、离线传感器）、未来 1~3h（P10–P90、COD/氨氮负荷）、需要关注（调节池液位/曝气/碳源/传感器核查），只提示不下发指令。</p>
+    <p class="small muted">证据：<code>src/control/advice.py</code> · 路演问答 Q21</p>
+  </div></details>
+
+  <details class="qa"><summary>Q22 四级预警阈值怎么定的？<span class="qa-cat">应用</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>60/80/95/110% × 厂设计能力，对应"加强监视 → 预抽空 → 错峰 → 限流+调蓄"四步"时间换空间"策略；概化设定，实厂需按工艺余量率定。</p>
+    <p>与 26 泵站能力约束一致；预警链路提前量 120min。</p>
+    <p class="small muted">证据：报告 §5.1</p>
+  </div></details>
+
+  <details class="qa"><summary>Q23 SWMM 调度削峰效果？<span class="qa-cat">应用</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>概化 SWMM 在环四策略对比——稳健版削 28% 超阈体积且冒溢不增；激进版削 89% 但上游冒溢 +6.2%；这是一条"削峰-冒溢权衡前沿"。</p>
+    <p>绝对数值不声称（未经率定），价值在策略间相对比较与方法论闭环。</p>
+    <p class="small muted">证据：报告 §5.5 · <code>reports/swmm_control.json</code></p>
+  </div></details>
+
+  <details class="qa"><summary>Q24 预警的准确率如何？<span class="qa-cat">应用</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>模拟测试段 7 次黄色事件全部命中、误报 6 段；橙/红没有真事件，不能报告这两个等级的召回。</p>
+    <p>误报成本分析与实厂率定是上线前提。</p>
+    <p class="small muted">证据：<code>reports/benefit_summary.json</code> · 路演问答 Q10</p>
+  </div></details>
+
+  <details class="qa"><summary>Q25 接实厂还缺什么？<span class="qa-cat">应用</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>已有字段/时间校验、质量控制与降级、滚动监控回退、模型版本与现场提示；还缺生产身份认证、限流、实厂点位映射、时钟同步、控制联锁——需旁路评估后逐步接入。</p>
+    <p class="small muted">证据：<code>docs/接口说明.md</code> · 路演问答 Q23</p>
+  </div></details>
+
+  <details class="qa"><summary>Q26 成本 / 节能降耗体现在哪？<span class="qa-cat">应用</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>价值 = 把"事后响应"变"事前预控"——减少雨天工艺冲击的药剂/能耗损失、避免泵组无效空转与溢流风险；模型轻量（训练秒级、推理毫秒级），边缘部署成本低。</p>
+    <p><b>注意：</b>没有实厂节能数字，不要编；如实说"这是机制性判断，实厂效益需部署后计量"。</p>
+  </div></details>
+
+  <details class="qa"><summary>Q27 和商用数字孪生平台比，差异在哪？<span class="qa-cat">应用</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>商业平台强在工程集成，我们强在"方法透明 + 数据诚实 + 可复现"——完整公开数据来源、指标口径、失败模式与边界，并做了容错与物理模型在环验证；我们覆盖的是它们"感知-预测"前端那一段，互补关系。</p>
+  </div></details>
+
+  <details class="qa"><summary>Q28 现场能演示什么？<span class="qa-cat">应用</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>Streamlit 看板四页签（超前感知总览 / 厂网一张图 / 暴雨复盘 / 调控策略对比）+ HTTP 接口现场请求（<code>/situation</code> 三段提示）。</p>
+    <p class="small muted">说明见 <a href="materials.html#demo">材料与复现 · 演示与视频</a></p>
+  </div></details>
+</section>
+
+<!-- ================= D ================= -->
+<section id="catD">
+  <h2>D · 局限与边界（Q29–Q33）</h2>
+
+  <details class="qa"><summary>Q29 最大的局限是什么？<span class="qa-cat">局限</span></summary>
+  <div class="a">
+    <p><b>一句话（三条）：</b>泰和是模拟场景（非实测）、区间未校准、预警/调度未实厂率定；真实性能证据目前只有 Köln 等公开数据集。</p>
+    <p>任何"不足 / 风险 / 局限"的变体都用这条。</p>
+  </div></details>
+
+  <details class="qa"><summary>Q30 模拟器为什么不是水动力学模型？<span class="qa-cat">局限</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>开发期选择"公式化概化生成器"（快、可控、可标注），水动力演算交给 SWMM 在调度验证环节做——两级模型分工；接入真实 SCADA 后需重新训练与评估。</p>
+    <p class="small muted">证据：报告 §7.2</p>
+  </div></details>
+
+  <details class="qa"><summary>Q31 为什么没有用真实管网水质数据？<span class="qa-cat">局限</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>管网内水质在线监测点在全球都是稀缺品类；收录了巴塞罗那管网在线水质等数据集作参照，但泰和没有；水质预测只在模拟场景评估并明确标注。</p>
+    <p class="small muted">证据：DATA_CATALOG · 报告 §4.6</p>
+  </div></details>
+
+  <details class="qa"><summary>Q32 异常分类 F1=1.0 可信吗？<span class="qa-cat">局限</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>不可当实厂性能——模拟测试段只有 1 次冲击事件且特征显著；它只证明检测链路可行，实厂需多厂真实异常数据重新标定阈值与误报率。</p>
+    <p class="small muted">证据：报告 §5.6 · <code>reports/anomaly_metrics.json</code></p>
+  </div></details>
+
+  <details class="qa"><summary>Q33 视频/演示里的数据是真实的吗？<span class="qa-cat">局限</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>降雨与 Köln 部分是实测，泰和厂网时序是模拟；视频素材全部可复现，并按"模拟"标注。</p>
+  </div></details>
+</section>
+
+<!-- ================= E ================= -->
+<section id="catE">
+  <h2>E · 行业与展望（Q34–Q36）</h2>
+
+  <details class="qa"><summary>Q34 你怎么理解"厂站网一体化"？<span class="qa-cat">行业</span></summary>
+  <div class="a">
+    <p><b>一句话：</b>把厂、泵站、管网从"分段运维"变成"统一调度"——上海 2026 年底在石洞口/竹园/白龙港三大片区落地（744 万 m³/d、占全市 70%）；技术上需要"感知体系 + 模拟评估系统"，超前感知是其中的前端能力。</p>
+    <p class="small muted">证据：<a href="logic.html#essence">底层逻辑 · 赛道本质</a></p>
+  </div></details>
+
+  <details class="qa"><summary>Q35 下一步计划？<span class="qa-cat">行业</span></summary>
+  <div class="a">
+    <p><b>一句话（四条）：</b>① 申请上海政务平台"有条件开放"的泵站/排水数据做实厂旁路验证；② 区间校准与暴雨覆盖率专项；③ 接入降雨数值预报与在线学习；④ 规则调控升级为 MPC 泵群优化。</p>
+    <p class="small muted">证据：报告 §7.3</p>
+  </div></details>
+
+  <details class="qa"><summary>Q36 这个项目是怎么开发的 / 团队分工？<span class="qa-cat">行业</span></summary>
+  <div class="a">
+    <p><b>核心是"可验证性"：</b>能现场指代码、能解释每个关键设计决策（如数据泄漏修复、因果路由、容错链路）、能重跑核验（谱系 183 项 + 22 项测试）。</p>
+    <p>按团队真实情况回答分工；开发过程中使用了 AI 辅助工具提效，但技术路线、指标口径与关键修复均由团队把关——所有代码与谱系可逐项核验、欢迎任意抽查。</p>
+  </div></details>
+</section>
+
+<div class="note teal mt20">
+  <p><b>证据版（23 问）</b>：<a href="downloads/路演专家问答.md">路演专家问答.md</a> —— 每题都附随包 JSON / 源码出处，与本文互为补充；重跑实验后该文档由脚本重建。</p>
+</div>
+
+</main>
+
+<footer>
+  第八届全国大学生市政环境 AI+ 创新实践能力大赛 · 产业赛道 · 主题七
+  <div class="row"><a href="index.html">返回首页</a> ｜ <a href="logic.html">底层逻辑</a> ｜ <a href="materials.html">材料下载</a></div>
+</footer>
+
+<script src="assets/site.js"></script>
+</body>
+</html>
