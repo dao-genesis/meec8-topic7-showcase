@@ -166,6 +166,10 @@ details.qa .a p:first-child{margin-top:10px}
 .slide .tag{position:absolute;left:54px;top:34px;font-size:.8rem;color:var(--muted)}
 .slide .body{margin-top:18px}
 
+/* ---------- 加密资源状态 ---------- */
+img.enc-pending{opacity:.35;filter:grayscale(.6)}
+.dl a.btn[data-busy]{opacity:.65;pointer-events:none}
+
 /* ---------- 页脚 ---------- */
 footer{background:var(--teal-d);color:#b2dfdb;text-align:center;padding:30px 20px;margin-top:70px;font-size:.88rem}
 footer a{color:#e0f2f1}

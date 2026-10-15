@@ -3,186 +3,49 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>厂站网一体化超前感知与协同调控 · 主题七成果展示站</title>
-<meta name="description" content="第八届全国大学生市政环境 AI+ 创新实践能力大赛 · 产业赛道 · 主题七：基于厂站网一体化的污水厂进厂水量水质超前感知与协同调控模型 — 底层逻辑 / 结果全景 / 复习问答 / 网页演示 / 材料复现">
-<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<meta name="robots" content="noindex, nofollow">
+<title>厂站网一体化超前感知与协同调控 · 主题七</title>
 <link rel="icon" href="assets/favicon.svg">
-<link rel="stylesheet" href="assets/site.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#00796b">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<style>
+:root{--teal:#00796b;--teal-d:#004d40;--ink:#263238;--muted:#607d8b}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",sans-serif;min-height:100vh;display:flex;
+ align-items:center;justify-content:center;background:linear-gradient(135deg,#004d40,#00796b);color:var(--ink);padding:20px}
+.gate{width:100%;max-width:430px}
+.gate-card{background:#fff;border-radius:16px;box-shadow:0 12px 48px rgba(0,0,0,.28);padding:38px 34px 26px;text-align:center}
+.gate-drop{font-size:2.2rem;line-height:1}
+.gate-card h1{font-size:1.25rem;color:var(--teal-d);margin:10px 0 4px}
+.gate-sub{color:var(--muted);font-size:.88rem;margin-bottom:22px}
+#gate-input{width:100%;padding:12px 14px;border:1.5px solid #cfd8dc;border-radius:10px;font-size:1rem;
+ text-align:center;letter-spacing:.15em;outline:none}
+#gate-input:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(0,121,107,.15)}
+#gate-btn{width:100%;margin-top:12px;padding:12px;border:0;border-radius:10px;background:var(--teal);
+ color:#fff;font-size:1rem;cursor:pointer;transition:background .15s}
+#gate-btn:hover{background:var(--teal-d)}
+#gate-btn:disabled{opacity:.7;cursor:default}
+.gate-err{color:#e53935;font-size:.85rem;min-height:1.3em;margin-top:10px}
+.gate-remember{display:block;color:var(--muted);font-size:.85rem;margin-top:10px}
+.gate-note{color:#90a4ae;font-size:.78rem;margin-top:16px;line-height:1.6}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.shake{animation:shake .45s}
+</style>
 </head>
 <body>
-
-<header class="hero">
-  <h1>基于厂站网一体化的污水厂进厂水量水质超前感知与协同调控模型</h1>
-  <p class="sub">第八届全国大学生市政环境 AI+ 创新实践能力大赛 · 产业赛道 · 主题七<br>
-  「感知 — 预测 — 预警 — 预控」全链路闭环 · 成果展示 × 复习索引 × 材料下载</p>
-  <div class="badges">
-    <span class="badge">Köln 真实数据 +1h NSE 0.943</span>
-    <span class="badge">泰和场景 +2h NSE 0.972（模拟）</span>
-    <span class="badge">SWMM 在环削峰 28%~89%</span>
-    <span class="badge">183 项谱系 SHA-256 可核验</span>
-    <span class="badge">22 项单元测试 + CI</span>
+<div id="gate" class="gate">
+  <div class="gate-card">
+    <div class="gate-drop">💧</div>
+    <h1>主题七 · 成果展示站</h1>
+    <p class="gate-sub">厂站网一体化超前感知与协同调控 ｜ 受保护站点</p>
+    <input id="gate-input" type="password" placeholder="请输入访问口令" autocomplete="off">
+    <button id="gate-btn">进入</button>
+    <p id="gate-err" class="gate-err"></p>
+    <label class="gate-remember"><input type="checkbox" id="gate-remember"> 在此浏览器记住</label>
+    <p class="gate-note">站点内容以口令派生密钥 AES-256-GCM 加密存储，浏览器内解密；无口令者仅能获取密文。</p>
   </div>
-</header>
-
-<nav class="site"><div class="wrap">
-  <a class="home" href="index.html">首页</a>
-  <a href="logic.html">底层逻辑</a>
-  <a href="results.html">结果全景</a>
-  <a href="qa.html">复习问答</a>
-  <a href="slides.html">网页演示</a>
-  <a href="materials.html">材料与复现</a>
-</div></nav>
-
-<main>
-
-<section id="tldr">
-  <h2>30 秒看懂这个项目</h2>
-
-  <div class="delayviz">
-    <svg viewBox="0 0 920 205" role="img" aria-label="输送延迟示意图">
-      <!-- 延迟标注 -->
-      <line x1="70" y1="52" x2="750" y2="52" stroke="#00796b" stroke-width="1.6" stroke-dasharray="5 4"/>
-      <line x1="70" y1="46" x2="70" y2="58" stroke="#00796b" stroke-width="2"/>
-      <line x1="750" y1="46" x2="750" y2="58" stroke="#00796b" stroke-width="2"/>
-      <text x="410" y="42" text-anchor="middle" font-size="15" fill="#004d40" font-weight="700">输送延迟 τ = L / v ≈ 0.3 ~ 3.6 小时（v = 0.8 m/s）</text>
-
-      <!-- 干线管道 -->
-      <line x1="70" y1="120" x2="700" y2="120" stroke="#b0bec5" stroke-width="10" stroke-linecap="round"/>
-      <line x1="70" y1="120" x2="700" y2="120" stroke="#00796b" stroke-width="10" stroke-linecap="round" opacity=".28"/>
-      <line class="pipeflow" x1="70" y1="120" x2="700" y2="120" stroke="#009688" stroke-width="4" stroke-linecap="round"/>
-
-      <!-- 上游节点 -->
-      <g font-size="12.5" fill="#37474f" text-anchor="middle">
-        <circle cx="110" cy="120" r="9" fill="#fff" stroke="#00796b" stroke-width="2.5"/>
-        <text x="110" y="152">T12 · 10.5 km</text>
-        <circle cx="265" cy="120" r="9" fill="#fff" stroke="#00796b" stroke-width="2.5"/>
-        <text x="265" y="152">T09 · 7.7 km</text>
-        <circle cx="420" cy="120" r="9" fill="#fff" stroke="#00796b" stroke-width="2.5"/>
-        <text x="420" y="152">T06 · 4.9 km</text>
-        <circle cx="560" cy="120" r="9" fill="#fff" stroke="#00796b" stroke-width="2.5"/>
-        <text x="560" y="152">T03 · 2.1 km</text>
-        <circle cx="665" cy="120" r="11" fill="#fff3e0" stroke="#ff8f00" stroke-width="3"/>
-        <text x="665" y="152" fill="#b26a00">PS01 泵站</text>
-      </g>
-      <text x="365" y="100" text-anchor="middle" font-size="13" fill="#607d8b">上游节点：液位 / 流量 / 泵站状态（此刻可观测）</text>
-
-      <!-- 厂前 -->
-      <g>
-        <rect x="742" y="82" width="132" height="76" rx="10" fill="#e0f2f1" stroke="#00796b" stroke-width="2"/>
-        <rect x="758" y="100" width="22" height="40" fill="#00796b" opacity=".75"/>
-        <rect x="792" y="100" width="22" height="40" fill="#00796b" opacity=".45"/>
-        <rect x="826" y="100" width="22" height="40" fill="#00796b" opacity=".25"/>
-        <text x="808" y="176" text-anchor="middle" font-size="13" fill="#004d40" font-weight="700">厂前进水（1~3h 后）</text>
-      </g>
-
-      <!-- 流动的点（示意各汇水区水体先后到达） -->
-      <circle class="dot d1" cx="0" cy="0" r="5.5" fill="#ffb300">
-        <animateMotion dur="5s" repeatCount="indefinite" begin="0s" path="M70,120 L742,120"/></circle>
-      <circle class="dot d2" cx="0" cy="0" r="5.5" fill="#ffb300">
-        <animateMotion dur="5s" repeatCount="indefinite" begin="1.1s" path="M70,120 L742,120"/></circle>
-      <circle class="dot d3" cx="0" cy="0" r="5.5" fill="#ffb300">
-        <animateMotion dur="5s" repeatCount="indefinite" begin="2.2s" path="M70,120 L742,120"/></circle>
-      <circle class="dot d4" cx="0" cy="0" r="5.5" fill="#ffb300">
-        <animateMotion dur="5s" repeatCount="indefinite" begin="3.3s" path="M70,120 L742,120"/></circle>
-      <circle class="dot d5" cx="0" cy="0" r="5.5" fill="#ffb300">
-        <animateMotion dur="5s" repeatCount="indefinite" begin="4.2s" path="M70,120 L742,120"/></circle>
-    </svg>
-    <p class="center small muted" style="padding-bottom:10px">
-      核心物理洞察：<b>污水从上游流到厂前要走 0.3~3.6 小时</b>——上游管网此刻的液位、流量与泵站状态，就是厂前几小时后进水的"预告片"。</p>
-  </div>
-
-  <div class="grid g3 mt14">
-    <div class="metric"><div class="v">感知 → 预测 → 预警 → 预控</div><div class="k">全链路闭环：多源融合 → 1~3h 超前预测 → 四级预警 → 泵站协同调控建议</div></div>
-    <div class="metric"><div class="v">26 座泵站 · 40.5 m³/s</div><div class="k">泰和系统官方骨架（Date1）：苏州河沿线，彭越浦总站汇流</div></div>
-    <div class="metric"><div class="v">真实 + 模拟双轨</div><div class="k">方法有效性用 Köln 真实厂网数据背书；泰和场景为官方骨架+上海实测降雨驱动的模拟（明确标注）</div></div>
-  </div>
-</section>
-
-<section id="numbers">
-  <h2>核心数字（全部可在仓库溯源）</h2>
-  <div class="grid g3">
-    <div class="metric"><div class="v">0.943 / 0.807 / 0.676</div><div class="k">Köln 真实厂网数据 +1h/+2h/+3h 进水预测 NSE（当前值基线 0.839 / 0.623 / 0.423）</div></div>
-    <div class="metric"><div class="v">0.983 / 0.972 / 0.956</div><div class="k">泰和模拟场景 +1h/+2h/+3h NSE，MAPE ≤ 2.5%（模拟口径，不代表实厂）</div></div>
-    <div class="metric amber"><div class="v">0.773</div><div class="k">全部液位计离线时的容错预测 NSE（常规补齐 0.708；严格模式可服务率为 0）</div></div>
-    <div class="metric"><div class="v">−28% / −89%</div><div class="k">SWMM 在环调度削峰：稳健版（冒溢不增）/ 激进版（冒溢 +6.2%）</div></div>
-    <div class="metric"><div class="v">183 <small>项</small></div><div class="k">谱系清单 SHA-256 逐项可核验；22 项单元测试 + CI 每次 push 自动运行</div></div>
-    <div class="metric warn"><div class="v">71.5%</div><div class="k">P10–P90 区间实测覆盖率（名义 80%）——未校准，如实标注，不作保守上界</div></div>
-  </div>
-  <div class="note teal mt14">数字出处：<code>reports/forecast_metrics.json</code>、<code>reports/robustness.json</code>、<code>reports/swmm_control.json</code>、<code>reports/lineage.json</code>；汇总页见 <a href="results.html">结果全景</a> 与 <a href="downloads/实验结果.md">实验结果.md</a>。</div>
-</section>
-
-<section id="map">
-  <h2>站点地图（怎么用这个站）</h2>
-  <div class="grid g3">
-    <a class="card" href="logic.html" style="text-decoration:none">
-      <h3 style="margin-top:0">🧭 底层逻辑</h3>
-      <p class="small muted">从物理洞察到数据破局、七步技术链路、三条边界——把"为什么这么做"讲透。复习主线，建议先读这一页。</p>
-      <span class="pill">赛道本质</span><span class="pill">设计决策</span><span class="pill">追问要点</span>
-    </a>
-    <a class="card" href="results.html" style="text-decoration:none">
-      <h3 style="margin-top:0">📈 结果全景</h3>
-      <p class="small muted">24 张图表 + 全部实验数字：Köln / 泰和 / 水质口径 / 压力测试 / 迁移 / SHAP / 容错 / SWMM / 预警。</p>
-      <span class="pill">24 图</span><span class="pill">指标表</span><span class="pill">边界注释</span>
-    </a>
-    <a class="card" href="qa.html" style="text-decoration:none">
-      <h3 style="margin-top:0">❓ 复习问答</h3>
-      <p class="small muted">36 问实战答法（数据/方法/应用/局限/行业五类）+ 23 问证据版，答辩与自测两用。</p>
-      <span class="pill">36 问</span><span class="pill">一句话答</span><span class="pill">证据出处</span>
-    </a>
-    <a class="card" href="slides.html" style="text-decoration:none">
-      <h3 style="margin-top:0">🎞 网页演示</h3>
-      <p class="small muted">网页版演示稿（← → 翻页）：18 页讲完整个项目，对应 8 分钟陈述结构。</p>
-      <span class="pill">键盘翻页</span><span class="pill">全屏演示</span>
-    </a>
-    <a class="card" href="materials.html" style="text-decoration:none">
-      <h3 style="margin-top:0">📦 材料与复现</h3>
-      <p class="small muted">下载中心（技术报告 / PPT / 源码包 / 问答 / 手册）+ 一键复现命令 + 谱系核验 + 演示与视频。</p>
-      <span class="pill">下载</span><span class="pill">复现</span><span class="pill">视频</span>
-    </a>
-    <a class="card" href="https://github.com/dao-genesis/meec8-topic7-showcase" style="text-decoration:none">
-      <h3 style="margin-top:0">🐙 站点源码</h3>
-      <p class="small muted">本站为静态站点，源码在 GitHub；项目主仓库（私有）：meec8-topic7。</p>
-      <span class="pill">GitHub</span><span class="pill">静态站</span>
-    </a>
-  </div>
-</section>
-
-<section id="gallery">
-  <h2>成果速览</h2>
-  <div class="grid g2">
-    <figure><img src="assets/figures/fig03_管网拓扑骨架.png" alt="管网拓扑骨架" loading="lazy">
-      <figcaption>厂站网一体化概化拓扑：43 节点 / 42 管段 / 6 泵站汇流级联 → 厂前节点（基于 Date1 官方骨架）</figcaption></figure>
-    <figure><img src="assets/figures/fig05_Koeln超前预测.png" alt="Köln 超前预测" loading="lazy">
-      <figcaption>真实数据背书：Köln 厂-网-雨数据 +1h 进水预测（NSE 0.943）</figcaption></figure>
-    <figure><img src="assets/figures/fig14_SWMM调度对比.png" alt="SWMM 调度对比" loading="lazy">
-      <figcaption>SWMM 在环调度：预见性滚动调度将厂前入流压回安全阈值附近（P=50a 设计暴雨）</figcaption></figure>
-    <figure><img src="assets/figures/fig23_SHAP全局解释.png" alt="SHAP 全局解释" loading="lazy">
-      <figcaption>SHAP 可解释性：Köln 模型依据历史进水 37% / 管网液位 34% / 降雨 15%</figcaption></figure>
-  </div>
-  <p class="center small muted mt8">全部 24 张图见 <a href="results.html">结果全景</a>；图片可点击放大。</p>
-</section>
-
-<section id="honesty">
-  <h2>诚实性与合规声明</h2>
-  <div class="note">
-    <ol>
-      <li>泰和厂-网时序为「官方静态骨架 + 上海实测降雨驱动」的<b>物理概化模拟</b>，非泰和实测；所有泰和数字不代表实厂性能；</li>
-      <li>方法有效性以 Köln-Weiden 等国际<b>真实</b>厂-网-雨公开数据集背书；真实跨厂迁移实验（Köln ↔ 丹麦 DHI）表明：零标签迁移有效但不及本地训练，换厂须先本地评估/重训；</li>
-      <li>P10–P90 区间<b>未经校准</b>（覆盖率 67%~74%，低于名义 80%），不可作为保守上界，上线前需单独校准；</li>
-      <li>SWMM 模型为概化参数（未经泰和实测率定），调度结论价值在于<b>策略间相对比较</b>；预警/效益数值为模拟场景推算，橙/红等级没有真实正例；</li>
-      <li>异常分类（模拟冲击事件）F1=1.0 仅证明链路可行性，不代表实厂性能；</li>
-      <li>全部数据来源与许可登记于 <a href="downloads/数据目录_DATA_CATALOG.md">DATA_CATALOG.md</a>；交付文件哈希见 <a href="materials.html#lineage">谱系清单</a>。</li>
-    </ol>
-  </div>
-</section>
-
-</main>
-
-<footer>
-  第八届全国大学生市政环境 AI+ 创新实践能力大赛 · 产业赛道 · 主题七
-  <div class="row"><a href="https://github.com/dao-genesis/meec8-topic7-showcase">网站源码</a> ｜ <a href="materials.html">材料下载</a> ｜ 居其实而不居其华</div>
-</footer>
-
-<script src="assets/site.js"></script>
+</div>
+<script src="assets/gate.js"></script>
 </body>
 </html>

@@ -2,6 +2,11 @@
 (function(){
   'use strict';
 
+  /* ---------- 0. PWA：注册 Service Worker（离线缓存；重复注册无害） ---------- */
+  if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  }
+
   /* ---------- 1. 图片灯箱 ---------- */
   var lb = document.getElementById('lightbox');
   if(!lb){
@@ -93,4 +98,45 @@
     if(!a.target) a.target = '_blank';
     a.rel = a.rel || 'noopener';
   });
+
+  /* ---------- 6. 加密资源：图表解密 + 下载解密 ---------- */
+  (function(){
+    var MW = window.__MW;
+    if(!MW || !MW.pass) return;
+
+    /* 6a. 图表：img[src^="assets/figures/"] → 拉取 .enc → 解密 → blob URL */
+    document.querySelectorAll('img[src^="assets/figures/"]').forEach(function(img){
+      var encUrl = img.getAttribute('src') + '.enc';
+      img.classList.add('enc-pending');
+      MW.fetchDecrypt(encUrl, MW.pass).then(function(bytes){
+        img.src = URL.createObjectURL(new Blob([bytes], { type: 'image/png' }));
+        img.classList.remove('enc-pending');
+      }).catch(function(){
+        img.classList.remove('enc-pending');
+        img.alt = (img.alt || '图表') + '（解密失败，请刷新）';
+      });
+    });
+
+    /* 6b. 下载：a[data-dec-name] → 拉取 .enc → 解密 → 触发下载原名 */
+    document.querySelectorAll('a[data-dec-name]').forEach(function(a){
+      a.addEventListener('click', function(ev){
+        ev.preventDefault();
+        if(a.dataset.busy) return;
+        a.dataset.busy = '1';
+        var old = a.textContent;
+        a.textContent = '解密中…';
+        MW.fetchDecrypt(a.getAttribute('href'), MW.pass).then(function(bytes){
+          var url = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
+          var t = document.createElement('a');
+          t.href = url; t.download = a.getAttribute('data-dec-name');
+          document.body.appendChild(t); t.click(); t.remove();
+          setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+        }).catch(function(e){
+          alert('解密下载失败：' + String((e && e.message) || e) + '\n请刷新页面后重试。');
+        }).then(function(){
+          a.textContent = old; delete a.dataset.busy;
+        });
+      });
+    });
+  })();
 })();

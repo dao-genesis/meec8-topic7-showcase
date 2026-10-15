@@ -3,146 +3,49 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>材料与复现 · 主题七成果展示站</title>
-<meta name="description" content="主题七材料下载中心（技术报告/PPT/源码包/问答/手册）+ 一键复现命令 + 谱系核验 + 演示与视频。">
+<meta name="robots" content="noindex, nofollow">
+<title>厂站网一体化超前感知与协同调控 · 主题七</title>
 <link rel="icon" href="assets/favicon.svg">
-<link rel="stylesheet" href="assets/site.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#00796b">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<style>
+:root{--teal:#00796b;--teal-d:#004d40;--ink:#263238;--muted:#607d8b}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",sans-serif;min-height:100vh;display:flex;
+ align-items:center;justify-content:center;background:linear-gradient(135deg,#004d40,#00796b);color:var(--ink);padding:20px}
+.gate{width:100%;max-width:430px}
+.gate-card{background:#fff;border-radius:16px;box-shadow:0 12px 48px rgba(0,0,0,.28);padding:38px 34px 26px;text-align:center}
+.gate-drop{font-size:2.2rem;line-height:1}
+.gate-card h1{font-size:1.25rem;color:var(--teal-d);margin:10px 0 4px}
+.gate-sub{color:var(--muted);font-size:.88rem;margin-bottom:22px}
+#gate-input{width:100%;padding:12px 14px;border:1.5px solid #cfd8dc;border-radius:10px;font-size:1rem;
+ text-align:center;letter-spacing:.15em;outline:none}
+#gate-input:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(0,121,107,.15)}
+#gate-btn{width:100%;margin-top:12px;padding:12px;border:0;border-radius:10px;background:var(--teal);
+ color:#fff;font-size:1rem;cursor:pointer;transition:background .15s}
+#gate-btn:hover{background:var(--teal-d)}
+#gate-btn:disabled{opacity:.7;cursor:default}
+.gate-err{color:#e53935;font-size:.85rem;min-height:1.3em;margin-top:10px}
+.gate-remember{display:block;color:var(--muted);font-size:.85rem;margin-top:10px}
+.gate-note{color:#90a4ae;font-size:.78rem;margin-top:16px;line-height:1.6}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.shake{animation:shake .45s}
+</style>
 </head>
 <body>
-
-<header class="page"><div class="wrap">
-  <h1>📦 材料与复现：下载中心 · 一键复现 · 演示与视频</h1>
-  <p>全部交付物与复现入口 · 谱系 183 项 SHA-256 可核验 · 22 项单元测试 + CI</p>
-</div></header>
-
-<nav class="site"><div class="wrap">
-  <a class="home" href="index.html">首页</a>
-  <a href="logic.html">底层逻辑</a>
-  <a href="results.html">结果全景</a>
-  <a href="qa.html">复习问答</a>
-  <a href="slides.html">网页演示</a>
-  <a href="materials.html">材料与复现</a>
-</div></nav>
-
-<main>
-
-<!-- ============ 下载中心 ============ -->
-<section id="downloads">
-  <h2>一、下载中心</h2>
-
-  <div class="dl"><div class="icon">📄</div><div class="meta"><div class="t">技术报告（PDF · 最新版）</div><div class="d">行业/背景调研 · 数据体系 · 模型与实验 · 预警调控 · SWMM 调度 · 局限与展望（≥15 页，图表齐全）</div></div><a class="btn" href="downloads/技术报告_主题七.pdf" download>下载 PDF</a></div>
-
-  <div class="dl"><div class="icon">📊</div><div class="meta"><div class="t">演示 PPT（PPTX · 2026-10 更新版）</div><div class="d">答辩演示文稿（26 页）：问题 → 数据 → 模型 → 预警调控 → 跨厂迁移/容错 → 数字孪生 → 结论；网页版见 <a href="slides.html">网页演示</a></div></div><a class="btn" href="downloads/演示PPT_主题七.pptx" download>下载 PPT</a></div>
-
-  <div class="dl"><div class="icon">📦</div><div class="meta"><div class="t">源代码包（ZIP · 最新版）</div><div class="d">核心代码 + 依赖配置 + 复现所需数据 + 中文注释；含 README 与操作流程讲解，一键复现</div></div><a class="btn" href="downloads/源码包_主题七_20261015.zip" download>下载源码</a></div>
-
-  <div class="dl"><div class="icon">❓</div><div class="meta"><div class="t">路演专家问答（MD · 23 问证据版）</div><div class="d">每题附随包 JSON / 源码出处；重跑实验后由脚本自动重建</div></div><a class="btn" href="downloads/路演专家问答.md" download>下载问答</a></div>
-
-  <div class="dl"><div class="icon">🧭</div><div class="meta"><div class="t">决赛答辩作战手册（MD · 团队版）</div><div class="d">底层逻辑讲解 + 36 问实战答法 + 现场突发预案 + 关键数字速查卡 + 48 小时清单</div></div><a class="btn" href="downloads/决赛答辩作战手册.md" download>下载手册</a></div>
-
-  <div class="dl"><div class="icon">🧪</div><div class="meta"><div class="t">实验结果（MD · 脚本生成）</div><div class="d">全部指标汇总（预测 / 水质 / 迁移 / SHAP / 压力 / 预警），与 reports/*.json 同步</div></div><a class="btn" href="downloads/实验结果.md" download>下载结果</a></div>
-
-  <div class="dl"><div class="icon">�</div><div class="meta"><div class="t">代码讲解（MD）</div><div class="d">给跑代码的同学：训练 / 测试 / 缺失处理 / 输入输出 / 换厂流程，每一点都能在源码里指到</div></div><a class="btn" href="downloads/代码讲解.md" download>下载讲解</a></div>
-
-  <div class="dl"><div class="icon">�🗂️</div><div class="meta"><div class="t">数据目录 DATA_CATALOG（MD）</div><div class="d">15 类数据集来源 / 许可 / 用途逐项登记（真实与模拟对应关系）</div></div><a class="btn" href="downloads/数据目录_DATA_CATALOG.md" download>下载目录</a></div>
-
-  <div class="dl"><div class="icon">🔗</div><div class="meta"><div class="t">谱系清单（JSON · 183 项 SHA-256）</div><div class="d">源文件 / 模型 / 产物哈希 + 生成顺序 + 软件版本；核验方法见下</div></div><a class="btn" href="downloads/lineage.json" download>下载谱系</a></div>
-
-  <div class="dl"><div class="icon">📈</div><div class="meta"><div class="t">全部指标（JSON · 机器可读）</div><div class="d">reports/forecast_metrics.json：Köln / 泰和 × 目标 × 提前量的全部指标</div></div><a class="btn" href="downloads/forecast_metrics.json" download>下载指标</a></div>
-
-  <div class="dl"><div class="icon">🎬</div><div class="meta"><div class="t">演示视频分镜脚本（MD）</div><div class="d">3~5 分钟 MP4 分镜：九镜头，核心为看板四页签动态演示</div></div><a class="btn" href="downloads/视频脚本_分镜.md" download>下载脚本</a></div>
-
-  <div class="dl"><div class="icon">📝</div><div class="meta"><div class="t">申报材料骨架（MD）</div><div class="d">作品信息表 / 300 字简介 / 材料清单 / 合规声明 / 提交核对清单</div></div><a class="btn" href="downloads/申报材料骨架.md" download>下载骨架</a></div>
-</section>
-
-<!-- ============ 复现 ============ -->
-<section id="repro">
-  <h2>二、一键复现（环境：Python ≥ 3.10）</h2>
-  <div class="card">
-<pre><code>pip install -r requirements.txt                # 锁定版本见 requirements-lock.txt；LSTM 另需 requirements-optional.txt
-python -m pytest tests -q                      # 单元测试（22 项）
-bash deliverables/run_all.sh                   # 全链路：数据→模拟→训练→服务工件→图表
-python -m src.models.forecast --dataset koeln  # 真实数据方法验证（≈2 分钟）
-python -m src.models.forecast --dataset taihe  # 泰和模拟场景本地训练
-streamlit run deliverables/demo/app.py         # 交互式演示看板（本地 8501）
-uvicorn src.serving.api:app --port 8000        # HTTP 预测服务（/forecast /situation）
-python -m src.viz.lineage --verify             # 谱系核验：183 项 SHA-256 逐项通过</code></pre>
-    <p class="small muted">逐步操作说明（环境准备 / 数据交付 / 常见问题 / 验收清单）见源码包内 <code>操作流程讲解.md</code> 与 <code>docs/运行教程_Windows.md</code>。</p>
+<div id="gate" class="gate">
+  <div class="gate-card">
+    <div class="gate-drop">💧</div>
+    <h1>主题七 · 成果展示站</h1>
+    <p class="gate-sub">厂站网一体化超前感知与协同调控 ｜ 受保护站点</p>
+    <input id="gate-input" type="password" placeholder="请输入访问口令" autocomplete="off">
+    <button id="gate-btn">进入</button>
+    <p id="gate-err" class="gate-err"></p>
+    <label class="gate-remember"><input type="checkbox" id="gate-remember"> 在此浏览器记住</label>
+    <p class="gate-note">站点内容以口令派生密钥 AES-256-GCM 加密存储，浏览器内解密；无口令者仅能获取密文。</p>
   </div>
-</section>
-
-<!-- ============ 谱系 ============ -->
-<section id="lineage">
-  <h2>三、谱系核验（交付文件完整性）</h2>
-  <div class="card">
-    <p>谱系清单记录 <b>183 个</b>源文件 / 模型 / 产物的 SHA-256、生成顺序与软件版本；在仓库根目录执行：</p>
-<pre><code>python -m src.viz.lineage        # 生成/更新 reports/lineage.json
-python -m src.viz.lineage --verify   # 逐项核验本地内容与清单一致</code></pre>
-    <p class="small muted">清单不证明源数据真实性，只证明"交付文件没有与记录脱节"；<code>.gitattributes</code> 统一 LF 检出，保证跨平台（Windows/Linux）核验一致。</p>
-  </div>
-</section>
-
-<!-- ============ 演示与视频 ============ -->
-<section id="demo">
-  <h2>四、演示与视频</h2>
-  <div class="grid g2">
-    <div class="card">
-      <h3 style="margin-top:0">🖥 交互式看板（Streamlit，四页签）</h3>
-      <ul class="small">
-        <li><b>① 超前感知总览</b>：实时指标卡 + 主图（雨强、实际进水、超前感知曲线、P10–P90 阴影带、四级阈值线）+ 上游液位/水质/泵站面板，预警触发自动弹出调控建议；</li>
-        <li><b>② 厂网一张图</b>：43 节点 / 42 管段拓扑，节点颜色随时刻联动显示液位热度，6 泵站状态卡；</li>
-        <li><b>③ 暴雨事件复盘</b>：按日雨量倒排选暴雨日，回放"感知→预测→预警"，自动统计首次预警提前量；</li>
-        <li><b>④ 调控策略对比</b>：SWMM 四策略厂前入流曲线 + 削峰/冒溢权衡指标表。</li>
-      </ul>
-      <p class="small muted">启动：<code>streamlit run deliverables/demo/app.py</code>（离线可运行，无需网络）。</p>
-    </div>
-    <div class="card">
-      <h3 style="margin-top:0">🔌 HTTP 预测服务（FastAPI）</h3>
-      <p class="small">严格模式（缺测即 422 拒绝）与容错模式（<code>robust=true</code> / <code>/situation</code> 三段提示）双轨：</p>
-<pre><code>import httpx
-from src.models.forecast import load_koeln
-df = load_koeln().iloc[-24:]
-history = [{"time": t.isoformat(), **{k: float(v) for k, v in r.items()}}
-           for t, r in df.iterrows()]
-r = httpx.post("http://127.0.0.1:8000/forecast",
-     json={"site": "koeln", "horizon_min": 60, "history": history})
-print(r.json())   # issued_at / target_at / p10 / p50 / p90 / model_version</code></pre>
-      <p class="small muted">接口细节见 <code>docs/接口说明.md</code>；当前为离线回放/演示服务，未含身份认证与限流。</p>
-    </div>
-  </div>
-
-  <div class="card">
-    <h3 style="margin-top:0">🎬 演示视频（3~5 分钟 MP4 · 16:9）</h3>
-    <p>视频要求"真实展示模型的动态运行过程"——分镜脚本（九镜头）已完成：核心为看板四页签的动态演示（超前感知曲线 → 预警触发 → 厂网一张图联动 → 暴雨复盘 → 调控对比）。</p>
-    <div class="note">视频文件制作/上传完成后，将在此处在线播放；当前可先下载 <a href="downloads/视频脚本_分镜.md">分镜脚本</a> 对照查看。</div>
-    <!-- 视频就绪后替换：
-    <video controls style="width:100%;border-radius:10px;margin-top:12px" poster="assets/figures/fig09_预警时间线.png">
-      <source src="downloads/演示视频_主题七.mp4" type="video/mp4">
-    </video>
-    -->
-  </div>
-</section>
-
-<!-- ============ 仓库 ============ -->
-<section id="repos">
-  <h2>五、仓库与工具链</h2>
-  <div class="card tight">
-    <ul class="small">
-      <li>项目主仓库（私有，团队成员可访问）：<a href="https://github.com/dao-genesis/meec8-topic7">github.com/dao-genesis/meec8-topic7</a>；本站源码：<a href="https://github.com/dao-genesis/meec8-topic7-showcase">meec8-topic7-showcase</a>（公开）</li>
-      <li>工具链：Python / pandas / LightGBM / PyTorch / PySWMM（EPA-SWMM 5）/ FastAPI / Streamlit —— 全部主流、开源、可复现</li>
-      <li>CI：GitHub Actions（每次 push 自动运行 22 项单元测试与端到端冒烟）</li>
-      <li>模拟与训练均固定随机种子；图表可由 <code>run_all.sh</code> 重建；重跑结果与交付图逐像素一致的验证记录见操作流程讲解</li>
-    </ul>
-  </div>
-</section>
-
-</main>
-
-<footer>
-  第八届全国大学生市政环境 AI+ 创新实践能力大赛 · 产业赛道 · 主题七
-  <div class="row"><a href="index.html">返回首页</a> ｜ <a href="results.html">结果全景</a> ｜ 居其实而不居其华</div>
-</footer>
-
-<script src="assets/site.js"></script>
+</div>
+<script src="assets/gate.js"></script>
 </body>
 </html>

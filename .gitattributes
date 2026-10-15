@@ -1,0 +1,18 @@
+# 文本文件统一按 LF 入库
+* text=auto
+
+# 二进制文件禁止任何换行转换（.enc 为 AES-256-GCM 密文，转换即损坏）
+*.enc binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.zip binary
+*.pdf binary
+*.docx binary
+*.pptx binary
+*.mp4 binary
+*.woff binary
+*.woff2 binary

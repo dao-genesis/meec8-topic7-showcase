@@ -1,0 +1,16 @@
+{
+  "name": "主题七 · 成果展示站（厂站网一体化超前感知与协同调控）",
+  "short_name": "主题七",
+  "description": "新疆大学 · 水沐团队 ｜ 第八届全国大学生市政环境 AI+ 创新实践能力大赛 · 产业赛道 · 主题七成果展示（口令门控）",
+  "lang": "zh-CN",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "theme_color": "#00796b",
+  "background_color": "#004d40",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "assets/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
