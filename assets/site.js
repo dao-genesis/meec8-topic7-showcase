@@ -139,4 +139,7 @@
       });
     });
   })();
+
+  /* ---------- 7. 交互可视化（页面含 [data-viz] 组件时启动） ---------- */
+  if (window.MWViz) window.MWViz.init(document);
 })();

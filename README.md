@@ -12,12 +12,14 @@
 
 | 路径 | 内容 |
 |---|---|
-| `index.html` / `brief.html` / `logic.html` / `results.html` / `qa.html` / `slides.html` / `materials.html` | 七个"壳页"：口令门（输入口令 → 浏览器内解密 `pages/*.enc` 后整页渲染） |
+| `index.html` / `brief.html` / `logic.html` / `results.html` / `qa.html` / `slides.html` / `demo.html` / `materials.html` | 八个"壳页"：口令门（输入口令 → 浏览器内解密 `pages/*.enc` 后整页渲染） |
 | `pages/*.enc` | 页面正文密文（AES-256-GCM；gzip 后加密） |
 | `assets/figures/*.png.enc` | 24 张图表密文（页面内解密为 Blob 显示，可点击放大） |
 | `downloads/*.enc` | 下载中心：技术报告（PDF/Word）/ 演示 PPT / 源码包 / 问答与手册 / 数据目录 / 谱系 / 指标 JSON……点击"下载"后浏览器内解密并保存原文件 |
 | `offline.html` | **离线单文件版**：全部页面 + 图表自包含（同一口令 · 内部加密）；微信/邮件转发或本地 `file://` 打开即可用 |
 | `sw.js` · `manifest.webmanifest` · `assets/icon-192.png` · `assets/icon-512.png` | **PWA**：手机"添加到主屏幕"、离线缓存已访问页面（仅密文） |
+| `demo.html` | **交互演示**：暴雨事件 23 天回放 · 预测浏览器（真值 vs P10–P90 · 多模型叠加）· SWMM 策略对比 · P=100a 增广前后 · 模型与效率（全部由主仓库真源 CSV 驱动） |
+| `assets/viz.js` | 交互可视化引擎（无依赖 · Canvas；数据随页面加密内嵌） |
 | `assets/gate.js` · `assets/site.js` · `assets/site.css` · `assets/favicon.svg` | 门控与解密核心 / 共享脚本 / 样式 / 图标 |
 | `robots.txt` | 禁止搜索引擎收录 |
 
@@ -33,7 +35,8 @@
 
 ## 维护流程（维护者本地）
 
-1. 修改 `_src/pages/*.html`（页面源稿）、`_src/figures/*.png`（图表）、`_src/downloads/*`（下载物）。
+0. （数据更新时）`python _src/build_vizdata.py` → 从主仓库真源 CSV/JSON 重建 `_src/vizdata/*.json`（交互演示数据；默认读 `../meec8-topic7`，可用 `MW_REPO` 覆盖）。
+1. 修改 `_src/pages/*.html`（页面源稿）、`_src/figures/*.png`（图表）、`_src/downloads/*`（下载物）；交互数据占位符 `__VIZ_JSON_<name>__` 由构建期自动注入。
 2. `python _src/build_gate.py` → 重建 `pages/*.enc`、`assets/figures/*.png.enc`、`downloads/*.enc` 与七个壳页。
 3. `python _src/build_offline.py` → 重建 `offline.html`（图表转 WebP 压缩）。
 4. 提交推送本仓库（只包含密文与公开前端）。

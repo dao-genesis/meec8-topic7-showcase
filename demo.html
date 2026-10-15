@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>厂站网一体化超前感知与协同调控 · 主题七</title>
+<link rel="icon" href="assets/favicon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#00796b">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<style>
+:root{--teal:#00796b;--teal-d:#004d40;--ink:#263238;--muted:#607d8b}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",sans-serif;min-height:100vh;display:flex;
+ align-items:center;justify-content:center;background:linear-gradient(135deg,#004d40,#00796b);color:var(--ink);padding:20px}
+.gate{width:100%;max-width:430px}
+.gate-card{background:#fff;border-radius:16px;box-shadow:0 12px 48px rgba(0,0,0,.28);padding:38px 34px 26px;text-align:center}
+.gate-drop{font-size:2.2rem;line-height:1}
+.gate-card h1{font-size:1.25rem;color:var(--teal-d);margin:10px 0 4px}
+.gate-sub{color:var(--muted);font-size:.88rem;margin-bottom:22px}
+#gate-input{width:100%;padding:12px 14px;border:1.5px solid #cfd8dc;border-radius:10px;font-size:1rem;
+ text-align:center;letter-spacing:.15em;outline:none}
+#gate-input:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(0,121,107,.15)}
+#gate-btn{width:100%;margin-top:12px;padding:12px;border:0;border-radius:10px;background:var(--teal);
+ color:#fff;font-size:1rem;cursor:pointer;transition:background .15s}
+#gate-btn:hover{background:var(--teal-d)}
+#gate-btn:disabled{opacity:.7;cursor:default}
+.gate-err{color:#e53935;font-size:.85rem;min-height:1.3em;margin-top:10px}
+.gate-remember{display:block;color:var(--muted);font-size:.85rem;margin-top:10px}
+.gate-note{color:#90a4ae;font-size:.78rem;margin-top:16px;line-height:1.6}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.shake{animation:shake .45s}
+</style>
+</head>
+<body>
+<div id="gate" class="gate">
+  <div class="gate-card">
+    <div class="gate-drop">💧</div>
+    <h1>主题七 · 成果展示站</h1>
+    <p class="gate-sub">厂站网一体化超前感知与协同调控 ｜ 受保护站点</p>
+    <input id="gate-input" type="password" placeholder="请输入访问口令" autocomplete="off">
+    <button id="gate-btn">进入</button>
+    <p id="gate-err" class="gate-err"></p>
+    <label class="gate-remember"><input type="checkbox" id="gate-remember"> 在此浏览器记住</label>
+    <p class="gate-note">站点内容以口令派生密钥 AES-256-GCM 加密存储，浏览器内解密；无口令者仅能获取密文。</p>
+  </div>
+</div>
+<script src="assets/gate.js"></script>
+</body>
+</html>

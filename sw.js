@@ -2,10 +2,10 @@
    策略：页面与 pages/*.enc 网络优先（保证内容新鲜，离线回退缓存）；
         其余同源资源（样式/脚本/图标/图表与下载密文）缓存优先。
    说明：本站内容以 AES-256-GCM 密文分发，缓存中同样只有密文。 */
-var CACHE = 'mw7-cache-v1';
+var CACHE = 'mw7-cache-v2';
 var CORE = ['./', 'index.html', 'brief.html', 'logic.html', 'results.html', 'qa.html',
-            'slides.html', 'materials.html', 'assets/site.css', 'assets/site.js',
-            'assets/gate.js', 'assets/favicon.svg', 'assets/icon-192.png',
+            'slides.html', 'demo.html', 'materials.html', 'assets/site.css', 'assets/site.js',
+            'assets/viz.js', 'assets/gate.js', 'assets/favicon.svg', 'assets/icon-192.png',
             'assets/icon-512.png', 'manifest.webmanifest'];
 
 self.addEventListener('install', function (e) {
