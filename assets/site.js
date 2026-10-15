@@ -140,6 +140,30 @@
     });
   })();
 
+  /* ---------- 6c. 视频：点击播放时解密为 Blob（避免自动下载大文件） ---------- */
+  document.querySelectorAll('video[data-dec-video]').forEach(function(v){
+    var url = v.getAttribute('data-dec-video');
+    var busy = false;
+    function load(play){
+      if (v.src || busy) { if (play && v.src) v.play(); return; }
+      busy = true;
+      MW.fetchDecrypt(url, MW.pass).then(function(bytes){
+        v.src = URL.createObjectURL(new Blob([bytes], { type: 'video/mp4' }));
+        if (play) v.play();
+      }).catch(function(e){
+        alert('视频解密失败：' + String((e && e.message) || e) + '\n请刷新页面后重试。');
+      }).then(function(){ busy = false; });
+    }
+    v.addEventListener('click', function(){ load(true); });
+    v.addEventListener('play', function(){ if (!v.src) { v.pause(); load(true); } });
+    var poster = v.getAttribute('poster');
+    if (poster && poster.indexOf('assets/figures/') === 0) {
+      MW.fetchDecrypt(poster + '.enc', MW.pass).then(function(bytes){
+        v.setAttribute('poster', URL.createObjectURL(new Blob([bytes], { type: 'image/png' })));
+      }).catch(function(){ v.removeAttribute('poster'); });
+    }
+  });
+
   /* ---------- 7. 交互可视化（页面含 [data-viz] 组件时启动） ---------- */
   if (window.MWViz) window.MWViz.init(document);
 })();
