@@ -228,9 +228,23 @@
       }).catch(function(){ cb(null); });
     }
 
+    var eviEl = root.querySelector('.ppt-evi');
+    var eviMap = null;
+    var eviNode = document.getElementById('ppt-evidence');
+    if (eviNode) { try { eviMap = JSON.parse(eviNode.textContent); } catch (e) { eviMap = null; } }
+    function updateEvi(n) {
+      if (!eviEl) return;
+      var e = eviMap && eviMap[String(n)];
+      if (!e) { eviEl.style.display = 'none'; return; }
+      eviEl.style.display = '';
+      eviEl.textContent = '本页对应站内证据：' + e.t + ' →';
+      eviEl.setAttribute('href', e.h);
+    }
+
     function show(n){
       cur = Math.max(1, Math.min(count, n));
       if(idxEl) idxEl.textContent = cur + ' / ' + count;
+      updateEvi(cur);
       var pending = root.querySelector('.ppt-loading');
       if(pending) pending.style.display = 'block';
       load(cur, function(url){
