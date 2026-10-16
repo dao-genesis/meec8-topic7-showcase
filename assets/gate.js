@@ -1,7 +1,9 @@
 /* 主题七成果展示站 · 口令门控与解密核心
    AES-256-GCM（PBKDF2-SHA256 200k 派生密钥）· 二进制格式: salt(16) | iv(12) | ciphertext
-   口令不落盘（明文）；设备级记忆：首次登录成功后自动存入 localStorage（本设备免再输），
-   页面导航时先进入"正在解锁"态避免口令框跳闪；可在门控卡片一键清除。 */
+   设备级记忆：首次登录成功后自动写入 localStorage（本设备免再输），可在门控卡片一键清除。
+   启动流程（无跳闪）：壳页 body 初始为 booting 态 —— 口令卡片整体不可见，只显示「正在解锁…」；
+   —— 有记忆口令 → 静默解密，成功后正文直接呈现（口令框自始至终不出现）；
+   —— 无记忆口令 → 门控卡片淡入；解密失败 → 显示卡片与错误提示。 */
 (function () {
   'use strict';
 
@@ -57,23 +59,25 @@
   var gate = document.getElementById('gate');
   if (!gate) return;
 
+  /* 新版 gate.js 运行时取消壳页兜底定时器（解锁流程由本脚本全权接管） */
+  if (window.__MW_BOOT_T) { clearTimeout(window.__MW_BOOT_T); window.__MW_BOOT_T = null; }
+
   var page = (location.pathname.split('/').pop() || 'index.html').replace(/\.html?$/i, '') || 'index';
   var input = document.getElementById('gate-input');
   var btn = document.getElementById('gate-btn');
   var err = document.getElementById('gate-err');
-  var keep = document.getElementById('gate-remember');
   var forget = document.getElementById('gate-forget');
   var clearBtn = document.getElementById('gate-clear');
 
-  function showUnlocking() {
-    if (input) input.style.display = 'none';
-    if (btn) btn.style.display = 'none';
-    if (keep) keep.style.display = 'none';
-    if (err) err.textContent = '正在解锁…';
+  function showGate(msg) {
+    document.body.classList.remove('booting');
+    if (forget) forget.style.display = 'none';
+    if (err) err.textContent = msg || '';
+    if (input) { input.focus(); input.select(); }
   }
 
-  async function unlock(pass, remember) {
-    if (!pass) { input.focus(); return; }
+  async function unlock(pass) {
+    if (!pass) { showGate(''); return; }
     err.textContent = '';
     btn.disabled = true; btn.textContent = '解密中…';
     try {
@@ -85,21 +89,17 @@
       document.open(); document.write(html); document.close();
     } catch (e) {
       btn.disabled = false; btn.textContent = '进入';
-      if (input) input.style.display = '';
-      if (btn) btn.style.display = '';
-      if (keep) keep.style.display = '';
       var msg = String((e && e.message) || e);
-      err.textContent = msg.indexOf('HTTP') === 0
-        ? ('页面文件加载失败（' + msg + '），请检查网络后重试')
-        : (msg.indexOf('浏览器') >= 0 ? msg : '口令不正确，请重试');
       try { sessionStorage.removeItem(SS_PASS); localStorage.removeItem(LS_PASS); } catch (e3) {}
+      showGate(msg.indexOf('HTTP') === 0
+        ? ('页面文件加载失败（' + msg + '），请检查网络后重试')
+        : (msg.indexOf('浏览器') >= 0 ? msg : '口令不正确，请重试'));
       gate.classList.add('shake');
       setTimeout(function () { gate.classList.remove('shake'); }, 500);
-      input.select();
     }
   }
 
-  btn.addEventListener('click', function () { unlock(input.value.trim(), keep && keep.checked); });
+  btn.addEventListener('click', function () { unlock(input.value.trim()); });
   input.addEventListener('keydown', function (e) { if (e.key === 'Enter') btn.click(); });
 
   if (clearBtn) {
@@ -113,10 +113,9 @@
   var saved = null;
   try { saved = sessionStorage.getItem(SS_PASS) || localStorage.getItem(LS_PASS); } catch (e4) {}
   if (saved) {
-    showUnlocking();
     if (forget) forget.style.display = 'block';
-    unlock(saved, false);
+    unlock(saved);          /* 静默解锁：booting 态保持，正文呈现前口令框不出现 */
   } else {
-    input.focus();
+    showGate('');           /* 首次访问：门控卡片淡入 */
   }
 })();
