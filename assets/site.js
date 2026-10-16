@@ -72,6 +72,7 @@
       else if(e.key === 'Home') { e.preventDefault(); go(0); }
       else if(e.key === 'End') { e.preventDefault(); go(slides.length - 1); }
       else if(e.key === 'f' || e.key === 'F') { toggleFs(); }
+      else if(e.key === 'a' || e.key === 'A') { toggleAuto(); }
     });
     deck.addEventListener('click', function(e){
       if(e.target.closest('a') || e.target.closest('button') || e.target.closest('table')) return;
@@ -88,6 +89,32 @@
       else if(deck.requestFullscreen) deck.requestFullscreen();
     }
     if(btnFs) btnFs.addEventListener('click', toggleFs);
+
+    /* 自动播放（A 键切换）：无人值守展示 / 逐页彩排 */
+    var btnAuto = deck.querySelector('.ctl .auto');
+    var timerEl = deck.querySelector('.ctl .timer');
+    var AUTO_MS = 14000;
+    var autoOn = false, autoT = null, t0 = Date.now();
+    function fmtClock(s){ var m = Math.floor(s/60), r = s%60; return (m<10?'0':'')+m+':'+(r<10?'0':'')+r; }
+    function autoNext(){
+      next();
+      if(autoOn){ clearTimeout(autoT); autoT = setTimeout(autoNext, AUTO_MS); }
+    }
+    function toggleAuto(){
+      if(!btnAuto) return;
+      autoOn = !autoOn;
+      if(autoOn){
+        btnAuto.textContent = '⏸ 暂停自动';
+        btnAuto.classList.add('on');
+        clearTimeout(autoT); autoT = setTimeout(autoNext, AUTO_MS);
+      } else {
+        btnAuto.textContent = '▶ 自动播放';
+        btnAuto.classList.remove('on');
+        clearTimeout(autoT);
+      }
+    }
+    if(btnAuto) btnAuto.addEventListener('click', toggleAuto);
+    if(timerEl) setInterval(function(){ timerEl.textContent = fmtClock(Math.floor((Date.now()-t0)/1000)); }, 1000);
 
     var start = parseInt((location.hash||'').replace('#',''), 10);
     go(isNaN(start) ? 0 : start - 1);
