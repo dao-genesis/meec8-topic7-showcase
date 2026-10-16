@@ -1114,8 +1114,249 @@ window.MWViz = (function () {
     draw();
   }
 
+  /* ================= 10. 厂网一张图（拓扑 · 液位热度 · 泵站状态） ================= */
+  var NET_STOPS = [
+    [0.00, [224, 242, 241]], [0.45, [128, 203, 196]], [0.70, [0, 121, 107]],
+    [0.86, [255, 179, 0]], [1.00, [211, 47, 47]]
+  ];
+  function netColor(f) {
+    f = Math.max(0, Math.min(1, f));
+    for (var k = 1; k < NET_STOPS.length; k++) {
+      if (f <= NET_STOPS[k][0]) {
+        var a = NET_STOPS[k - 1], b = NET_STOPS[k];
+        var t = (f - a[0]) / ((b[0] - a[0]) || 1);
+        return 'rgb(' + Math.round(a[1][0] + (b[1][0] - a[1][0]) * t) + ',' +
+          Math.round(a[1][1] + (b[1][1] - a[1][1]) * t) + ',' +
+          Math.round(a[1][2] + (b[1][2] - a[1][2]) * t) + ')';
+      }
+    }
+    return 'rgb(211,47,47)';
+  }
+
+  function buildNetwork(host) {
+    var D = data('network');
+    if (!D) return;
+    var steps = D.t.length;
+    var state = { i: 0, playing: false, speed: 72, last: 0 };
+    var raf = null;
+
+    /* ---- 布局（0..1 相对坐标）：干线沿 x 轴按距厂距离；支线交替上下、向左上游延伸 ---- */
+    var MAXKM = 10.5, trunkY = 0.56;
+    var byId = {}, pos = [];
+    D.nodes.forEach(function (n, k) { byId[n.id] = k; });
+    D.nodes.forEach(function (n, k) {
+      if (n.kind !== 'branch') pos[k] = { x: 1 - n.km / MAXKM, y: trunkY };
+    });
+    var ATT = { B1: 'T09', B2: 'T04', B3: 'T10', B4: 'T03', B5: 'T11', B6: 'T05' };
+    ['B1', 'B2', 'B3', 'B4', 'B5', 'B6'].forEach(function (b, bi) {
+      var side = (bi % 2 === 0) ? 1 : -1;
+      var ap = pos[byId[ATT[b]]];
+      for (var j = 1; j <= 5; j++) {
+        pos[byId[b + '0' + j]] = { x: ap.x - 0.042 * j, y: trunkY + side * 0.062 * j };
+      }
+    });
+    pos.forEach(function (p) {
+      p.x = Math.min(0.988, Math.max(0.012, p.x));
+      p.y = Math.min(0.93, Math.max(0.07, p.y));
+    });
+    var plantIdx = byId['PLANT_IN'];
+    var pumpByNode = {};
+    D.pumps.forEach(function (pm) { pumpByNode[pm.node] = pm; });
+
+    /* ---- 控件 ---- */
+    var ctl = E('div', 'vctl');
+    var btn = E('button', 'vbtn', '▶ 播放');
+    btn.type = 'button';
+    var spd = E('select', 'vsel');
+    var SPEEDS = { '慢': 24, '中': 72, '快': 180 };
+    Object.keys(SPEEDS).forEach(function (k) {
+      var o = E('option', null, k); o.value = k; spd.appendChild(o);
+    });
+    spd.value = '中';
+    var range = document.createElement('input');
+    range.type = 'range'; range.min = 0; range.max = steps - 1; range.value = 0;
+    range.className = 'vrange';
+    var jump = E('button', 'vbtn', '⏭ 跳到雨峰');
+    jump.type = 'button';
+    ctl.appendChild(btn); ctl.appendChild(spd); ctl.appendChild(range); ctl.appendChild(jump);
+    host.appendChild(ctl);
+
+    var c = chart(host, 440);
+    c.pad = { l: 0, r: 0, t: 0, b: 0 };
+    var tip = tooltip(c);
+    var read = E('div', 'vread');
+    host.appendChild(read);
+    var note = E('p', 'small muted');
+    note.style.margin = '10px 2px 0';
+    note.textContent = '节点颜色 = 管网液位的当步相对高低（每步自适应标尺，越高越暖；绝对液位见悬停与读数）；外环 = 泵站开机数（灰 0 · 黄 1 · 橙 2 · 红 ≥3）；最右侧为污水厂（PLANT_IN）。' +
+      '窗口：' + D.note + '；雨强为上海实测驱动，液位/泵站为物理概化模拟。出处：data/simulated_realrain/（模拟口径）。';
+    host.appendChild(note);
+
+    function pumpRingColor(on) {
+      return on <= 0 ? '#cfd8dc' : (on === 1 ? '#ffd54f' : (on === 2 ? '#ffb300' : '#e53935'));
+    }
+
+    function draw() {
+      c.fit();
+      var ctx = c.ctx, w = c.w, h = c.h;
+      ctx.clearRect(0, 0, w, h);
+      var i = state.i;
+      var lv = D.lv[i];
+      /* 每步自适应标尺：让"液位波"的空间差异清晰可见（绝对液位见悬停/读数） */
+      var stepLo = Infinity, stepHi = -Infinity;
+      for (var k2 = 0; k2 < lv.length; k2++) {
+        if (lv[k2] < stepLo) stepLo = lv[k2];
+        if (lv[k2] > stepHi) stepHi = lv[k2];
+      }
+      if (stepHi - stepLo < 20) {
+        var mid = (stepHi + stepLo) / 2;
+        stepLo = mid - 10; stepHi = mid + 10;
+      }
+      function X(f) { return 30 + f * (w - 60); }
+      function Y(f) { return 16 + f * (h - 60); }
+
+      /* 管段 */
+      D.links.forEach(function (l) {
+        var a = pos[l[0]], b = pos[l[1]];
+        var f = ((lv[l[0]] + lv[l[1]]) / 2 - stepLo) / (stepHi - stepLo);
+        ctx.strokeStyle = netColor(f);
+        ctx.lineWidth = l[2] >= 1800 ? 3.6 : (l[2] >= 1400 ? 2.4 : 1.5);
+        ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(X(a.x), Y(a.y)); ctx.lineTo(X(b.x), Y(b.y)); ctx.stroke();
+      });
+
+      /* 泵站外环 */
+      D.pumps.forEach(function (pm) {
+        var p = pos[pm.node], on = D.pon[i][D.pumps.indexOf(pm)];
+        var r = (D.nodes[pm.node].kind === 'plant_inlet' ? 13 : 8) + 4.5;
+        ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), r, 0, Math.PI * 2);
+        ctx.strokeStyle = pumpRingColor(on); ctx.lineWidth = 3; ctx.stroke();
+      });
+
+      /* 节点 */
+      D.nodes.forEach(function (n, k) {
+        var p = pos[k];
+        var f = (lv[k] - stepLo) / (stepHi - stepLo);
+        var r = n.kind === 'plant_inlet' ? 13 : (n.kind === 'trunk' ? 8 : 6);
+        ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), r, 0, Math.PI * 2);
+        ctx.fillStyle = netColor(f); ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.4; ctx.stroke();
+      });
+
+      /* 干线标签 + 厂名 */
+      ctx.font = '11px system-ui,-apple-system,"Segoe UI",sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = C.muted;
+      D.nodes.forEach(function (n, k) {
+        if (n.kind === 'trunk' && n.km >= 2) {
+          ctx.fillText(n.id, X(pos[k].x), Y(pos[k].y) - 16);
+        }
+      });
+      var pp = pos[plantIdx];
+      ctx.fillStyle = C.tealD; ctx.font = '700 12px system-ui,-apple-system,"Segoe UI",sans-serif';
+      ctx.fillText('污水厂', X(pp.x) - 34, Y(pp.y) - 20);
+      ctx.textAlign = 'left';
+
+      /* 色标（左下 · 本步范围） */
+      var lgW = 168, lgH = 10, lgX = 30, lgY = h - 22;
+      var grd = ctx.createLinearGradient(lgX, 0, lgX + lgW, 0);
+      for (var s = 0; s <= 10; s++) grd.addColorStop(s / 10, netColor(s / 10));
+      ctx.fillStyle = grd; ctx.fillRect(lgX, lgY, lgW, lgH);
+      ctx.strokeStyle = '#cfd8dc'; ctx.lineWidth = 1; ctx.strokeRect(lgX, lgY, lgW, lgH);
+      ctx.fillStyle = C.muted; ctx.font = '10.5px system-ui,-apple-system,"Segoe UI",sans-serif';
+      ctx.fillText('本步 ' + (stepLo / 1000).toFixed(2) + ' m', lgX, lgY - 6);
+      ctx.fillText((stepHi / 1000).toFixed(2) + ' m', lgX + lgW - 38, lgY - 6);
+    }
+
+    function readout() {
+      var i = state.i;
+      var lv = D.lv[i];
+      var onSum = D.pon[i].reduce(function (a, b) { return a + b; }, 0);
+      var capSum = D.pumps.reduce(function (a, p) { return a + p.n; }, 0);
+      var ratio = D.inflow[i] / 8000;
+      var lvl = ratio >= 1.1 ? 4 : (ratio >= 0.95 ? 3 : (ratio >= 0.8 ? 2 : (ratio >= 0.6 ? 1 : 0)));
+      read.innerHTML =
+        '<div class="vcell"><div class="vk">时刻</div><div class="vv">' + fmtDT(tAt(D.start, D.t[i])) + '</div></div>' +
+        '<div class="vcell"><div class="vk">雨强</div><div class="vv">' + fmt(D.rain[i], 1) + ' mm/h</div></div>' +
+        '<div class="vcell"><div class="vk">进厂流量</div><div class="vv">' + fmt(D.inflow[i]) + ' m³/h</div></div>' +
+        '<div class="vcell"><div class="vk">容量比 · 预警</div><div class="vv">' + fmt(ratio * 100) + '% · ' +
+          '<span class="vlevel" style="background:' + LEVEL_COLOR[lvl] + '">' + LEVEL[lvl] + '</span></div></div>' +
+        '<div class="vcell"><div class="vk">泵站开机</div><div class="vv">' + onSum + ' / ' + capSum + ' 台</div></div>' +
+        '<div class="vcell"><div class="vk">厂前液位</div><div class="vv">' + (lv[plantIdx] / 1000).toFixed(3) + ' m</div></div>';
+    }
+
+    var acc = 0;
+    function tick() {
+      var dt = state.last ? (Date.now() - state.last) / 1000 : 0;
+      state.last = Date.now();
+      acc += state.speed * dt;
+      var adv = Math.floor(acc);
+      acc -= adv;
+      if (adv > 0) state.i = Math.min(steps - 1, state.i + adv);
+      range.value = state.i;
+      draw(); readout();
+      if (state.i >= steps - 1) {
+        state.playing = false; btn.textContent = '▶ 重播'; btn.classList.remove('on'); state.i = 0;
+        return;
+      }
+      raf = requestAnimationFrame(tick);
+    }
+
+    btn.addEventListener('click', function () {
+      if (state.playing) {
+        state.playing = false; btn.textContent = '▶ 继续'; btn.classList.remove('on');
+        if (raf) cancelAnimationFrame(raf);
+      } else {
+        state.playing = true; state.last = 0; btn.textContent = '⏸ 暂停'; btn.classList.add('on');
+        raf = requestAnimationFrame(tick);
+      }
+    });
+    spd.addEventListener('change', function () { state.speed = SPEEDS[spd.value] || 72; });
+    range.addEventListener('input', function () {
+      state.i = parseInt(range.value, 10) || 0;
+      if (state.playing) { state.playing = false; btn.textContent = '▶ 继续'; btn.classList.remove('on'); if (raf) cancelAnimationFrame(raf); }
+      draw(); readout();
+    });
+    jump.addEventListener('click', function () {
+      var mi = 0;
+      for (var k = 1; k < steps; k++) if (D.rain[k] > D.rain[mi]) mi = k;
+      state.i = mi;
+      if (state.playing) { state.playing = false; btn.textContent = '▶ 继续'; btn.classList.remove('on'); if (raf) cancelAnimationFrame(raf); }
+      range.value = state.i;
+      draw(); readout();
+    });
+
+    /* 悬停：最近节点 */
+    c.cv.addEventListener('mousemove', function (ev) {
+      var r = c.cv.getBoundingClientRect();
+      var mx = ev.clientX - r.left, my = ev.clientY - r.top;
+      var w = c.w, h = c.h;
+      var best = -1, bd = 15 * 15;
+      D.nodes.forEach(function (n, k) {
+        var x = 30 + pos[k].x * (w - 60), y = 16 + pos[k].y * (h - 60);
+        var d = (x - mx) * (x - mx) + (y - my) * (y - my);
+        if (d < bd) { bd = d; best = k; }
+      });
+      if (best < 0) { tip.hide(); return; }
+      var n = D.nodes[best], lv = D.lv[state.i][best] / 1000;
+      var rows = ['<b>' + n.id + '</b>（' + (n.kind === 'trunk' ? '干线' : (n.kind === 'branch' ? '支线' : '厂前')) +
+        ' · ' + n.km + ' km）', '液位 ' + lv.toFixed(3) + ' m'];
+      var pm = pumpByNode[best];
+      if (pm) {
+        var pi2 = D.pumps.indexOf(pm);
+        rows.push(pm.id + ' 泵站：开机 ' + D.pon[state.i][pi2] + '/' + pm.n + ' 台 · 前池 ' +
+          (D.pwl[state.i][pi2] / 10).toFixed(1) + ' m');
+      }
+      var x = 30 + pos[best].x * (w - 60);
+      tip.show(x, 20, rows.join('<br>'));
+    });
+    c.cv.addEventListener('mouseleave', function () { tip.hide(); });
+    onResize(function () { draw(); readout(); });
+    draw(); readout();
+  }
+
   /* ================= init ================= */
-  var BUILDERS = { event: buildEvent, predict: buildPredict, swmm: buildSwmm, stress: buildStress, models: buildModels, robust: buildRobust, shap: buildShap, delay: buildDelay, benefit: buildBenefit };
+  var BUILDERS = { event: buildEvent, predict: buildPredict, swmm: buildSwmm, stress: buildStress, models: buildModels, robust: buildRobust, shap: buildShap, delay: buildDelay, benefit: buildBenefit, network: buildNetwork };
 
   function init(root) {
     var scope = root || document;
