@@ -1205,7 +1205,7 @@ window.MWViz = (function () {
     host.appendChild(detail);
     var note = E('p', 'small muted');
     note.style.margin = '10px 2px 0';
-    note.innerHTML = '地图操作：滚轮缩放（指向缩放）· 拖拽平移 · 双击放大 · 点节点看详情 · ＋/－/⟲ 复位。' +
+    note.innerHTML = '地图操作：滚轮缩放（指向缩放）· 拖拽平移 · 双击放大 · 点节点看详情（液位/流量/<b>输送延迟 τ = 距厂距离 ÷ 0.8 m/s</b>/泵站前池小图）· ＋/－/⟲ 复位。' +
       '<b>节点颜色 = 管网液位</b>（每步自适应标尺，越高越暖）；<b>泵站方框</b>（PS01–PS06）外环 = 开机数（灰 0 · 黄 1 · 橙 2 · 红 ≥3）；' +
       '管段上的箭头 = 流向（支线 → 干线 → 厂前）；底部时间条可点击/拖动定位。' +
       '窗口：' + D.note + '；雨强为上海实测驱动，液位/流量/泵站为物理概化模拟（口径见 results）。';
@@ -1460,6 +1460,12 @@ window.MWViz = (function () {
       var cells = '<div class="vcell"><div class="vk">时刻</div><div class="vv">' + fmtDT(tAt(D.start, D.t[i])) + '</div></div>' +
         '<div class="vcell"><div class="vk">液位</div><div class="vv">' + lv.toFixed(3) + ' m</div></div>' +
         '<div class="vcell"><div class="vk">节点流量</div><div class="vv">' + fl + ' m³/h</div></div>';
+      if (n.tau_h != null) {
+        cells += '<div class="vcell wide"><div class="vk">输送延迟 τ = 距厂距离 ÷ v（v = 0.8 m/s）</div>' +
+          '<div class="vv">' + n.tau_h.toFixed(2) + ' h（' + n.km + ' km）' +
+          (n.lead_h != null ? ' · 窗口互相关领先 ' + n.lead_h.toFixed(2) + ' h（r = ' + n.lead_corr + '）' : '') +
+          '</div></div>';
+      }
       if (pm) {
         var pi2 = pumpIdxByNode[k];
         cells += '<div class="vcell wide"><div class="vk">' + pm.id + ' 泵站</div><div class="vv">开机 ' + D.pon[i][pi2] + '/' + pm.n +
@@ -1469,6 +1475,47 @@ window.MWViz = (function () {
         ' <a href="#" class="vd-close" style="margin-left:8px;color:#083f3c">收起</a>' +
         '<div class="vread" style="margin-top:8px">' + cells + '</div>';
       detail.style.display = 'block';
+      if (pm) {
+        /* 泵站前池液位小图（窗口内） */
+        var pi3 = pumpIdxByNode[k];
+        var wrap = E('div', 'vsl');
+        wrap.style.marginTop = '8px';
+        var lab = E('span', 'vsl-lab', pm.id + ' 前池液位（' + D.start + ' 起 7 天 · 模拟）');
+        wrap.appendChild(lab);
+        var cv = document.createElement('canvas');
+        var W = 560, Hh = 46;
+        cv.style.height = Hh + 'px';
+        cv.style.width = '100%';
+        wrap.appendChild(cv);
+        detail.appendChild(wrap);
+        var dpr = window.devicePixelRatio || 1;
+        var wpx = Math.max(280, wrap.clientWidth || 560);
+        cv.width = Math.round(wpx * dpr);
+        cv.height = Math.round(Hh * dpr);
+        var c2 = cv.getContext('2d');
+        c2.setTransform(dpr, 0, 0, dpr, 0, 0);
+        var vals = D.pwl.map(function (row) { return row[pi3] / 10; });
+        var vmin = Math.min.apply(null, vals), vmax = Math.max.apply(null, vals);
+        var vk = (vmax - vmin) || 1;
+        c2.strokeStyle = '#0d5f5a'; c2.lineWidth = 1.3;
+        c2.beginPath();
+        vals.forEach(function (v, j) {
+          var x = 4 + j / (vals.length - 1) * (wpx - 8);
+          var y = Hh - 8 - (v - vmin) / vk * (Hh - 18);
+          if (j === 0) c2.moveTo(x, y); else c2.lineTo(x, y);
+        });
+        c2.stroke();
+        /* 当前步标记 */
+        var xc = 4 + state.i / (vals.length - 1) * (wpx - 8);
+        var yc = Hh - 8 - (vals[state.i] - vmin) / vk * (Hh - 18);
+        c2.strokeStyle = '#a8691c'; c2.lineWidth = 1.4;
+        c2.beginPath(); c2.moveTo(xc, 2); c2.lineTo(xc, Hh - 2); c2.stroke();
+        c2.fillStyle = '#a8691c';
+        c2.beginPath(); c2.arc(xc, yc, 2.6, 0, Math.PI * 2); c2.fill();
+        c2.fillStyle = '#5d6e73'; c2.font = '9.5px ui-monospace,Consolas,monospace';
+        c2.fillText('min ' + vmin.toFixed(2) + ' m', 6, 10);
+        c2.fillText('max ' + vmax.toFixed(2) + ' m', wpx - 76, 10);
+      }
       var cl = detail.querySelector('.vd-close');
       if (cl) cl.addEventListener('click', function (ev) { ev.preventDefault(); detail.style.display = 'none'; });
     }
@@ -1586,6 +1633,7 @@ window.MWViz = (function () {
       var n = D.nodes[best], lv = D.lv[state.i][best] / 1000, fl = D.fl[state.i][best];
       var rows = ['<b>' + n.id + '</b>（' + (n.kind === 'trunk' ? '干线' : (n.kind === 'branch' ? '支线' : '厂前')) +
         ' · ' + n.km + ' km）', '液位 ' + lv.toFixed(3) + ' m · 流量 ' + fl + ' m³/h'];
+      if (n.tau_h != null) rows.push('输送延迟 τ ≈ ' + n.tau_h.toFixed(2) + ' h（领先厂前）');
       var pm = pumpByNode[best];
       if (pm) {
         var pi2 = pumpIdxByNode[best];
@@ -1599,8 +1647,164 @@ window.MWViz = (function () {
     draw(); readout();
   }
 
+  /* ================= 11. 预警事件尺度指标（阈值尺 · 23 天运行口径时间线 · 双口径命中表） ================= */
+  function buildEvents(host) {
+    var D = data('events');
+    if (!D) return;
+    var steps = D.t.length;
+    var W = D.window;
+    var RMAX = 1.25;
+
+    var leg = E('div', 'vlegend');
+    leg.innerHTML = '<span><i style="background:#90caf9"></i>蓝色 ≥ 60%</span>' +
+      '<span><i style="background:#ffe082"></i>黄色 ≥ 80%</span>' +
+      '<span><i style="background:#ffb74d"></i>橙色 ≥ 95%</span>' +
+      '<span><i style="background:#ef9a9a"></i>红色 ≥ 110%</span>' +
+      '<span>阈值口径 = 占设计能力 8000 m³/h 的比例（Date1 概化 · 与演示 PPT 一致）</span>';
+    host.appendChild(leg);
+
+    var c = chart(host, 282);
+    var tip = tooltip(c);
+    var read = E('div', 'vread');
+    host.appendChild(read);
+
+    function X(i) { return c.pad.l + i / (steps - 1) * (c.w - c.pad.l - c.pad.r); }
+    function Y(r) { return c.h - c.pad.b - (r / RMAX) * (c.h - c.pad.t - c.pad.b); }
+
+    function draw() {
+      c.fit();
+      c.pad = { l: 56, r: 16, t: 92, b: 30 };
+      var ctx = c.ctx, w = c.w, h = c.h;
+      ctx.clearRect(0, 0, w, h);
+
+      /* ---- 阈值尺（顶部）---- */
+      var rx0 = c.pad.l, rx1 = w - c.pad.r, ry = 30, rh = 12;
+      var bands = [[0, 0.6, '#d7e8e5'], [0.6, 0.8, '#90caf9'], [0.8, 0.95, '#ffe082'], [0.95, 1.1, '#ffb74d'], [1.1, RMAX, '#ef9a9a']];
+      bands.forEach(function (b) {
+        var x0 = rx0 + b[0] / RMAX * (rx1 - rx0), x1 = rx0 + b[1] / RMAX * (rx1 - rx0);
+        ctx.fillStyle = b[2]; ctx.fillRect(x0, ry, x1 - x0, rh);
+      });
+      ctx.strokeStyle = '#c9c1ad'; ctx.lineWidth = 1; ctx.strokeRect(rx0, ry, rx1 - rx0, rh);
+      ctx.font = '10px ui-monospace,Consolas,monospace'; ctx.textAlign = 'center';
+      ctx.fillStyle = '#5d6e73';
+      D.levels.forEach(function (lv) {
+        var x = rx0 + lv.ratio / RMAX * (rx1 - rx0);
+        ctx.beginPath(); ctx.moveTo(x, ry + rh); ctx.lineTo(x, ry + rh + 4); ctx.strokeStyle = '#a99e85'; ctx.stroke();
+        ctx.fillText(lv.name + ' ' + Math.round(lv.ratio * 100) + '%', x, ry - 5);
+      });
+      /* 窗口最高标记（尺下 · 独立一行，避开刻度文字） */
+      var xm = rx0 + W.max_ratio / RMAX * (rx1 - rx0);
+      ctx.fillStyle = '#b03a2e';
+      ctx.beginPath(); ctx.moveTo(xm, ry + rh + 2); ctx.lineTo(xm - 5, ry + rh + 11); ctx.lineTo(xm + 5, ry + rh + 11); ctx.closePath(); ctx.fill();
+      ctx.textAlign = 'center';
+      ctx.fillText('窗口最高 ' + fmt(W.max_ratio * 100, 1) + '%', Math.min(xm, rx1 - 60), ry + rh + 24);
+      ctx.textAlign = 'left';
+      ctx.fillText('窗口：' + W.start + ' → ' + W.end + '（23 天 · 15min 抽样）', c.pad.l, 14);
+
+      /* ---- 时间线 ---- */
+      var y0 = Y(0), y1 = Y(RMAX);
+      /* 阈值横线 */
+      D.levels.forEach(function (lv) {
+        var y = Y(lv.ratio);
+        ctx.strokeStyle = 'rgba(169,158,133,.75)'; ctx.setLineDash([5, 4]); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(c.pad.l, y); ctx.lineTo(w - c.pad.r, y); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#5d6e73'; ctx.font = '9.5px ui-monospace,Consolas,monospace';
+        ctx.fillText(Math.round(lv.ratio * 100) + '%', c.pad.l - 30, y + 3);
+      });
+      /* 面积 + 曲线 */
+      ctx.beginPath();
+      ctx.moveTo(X(0), y0);
+      for (var i = 0; i < steps; i++) ctx.lineTo(X(i), Y(Math.min(RMAX, D.ratio[i])));
+      ctx.lineTo(X(steps - 1), y0); ctx.closePath();
+      ctx.fillStyle = 'rgba(13,95,90,.12)'; ctx.fill();
+      ctx.beginPath();
+      for (i = 0; i < steps; i++) {
+        var yy = Y(Math.min(RMAX, D.ratio[i]));
+        if (i === 0) ctx.moveTo(X(i), yy); else ctx.lineTo(X(i), yy);
+      }
+      ctx.strokeStyle = '#0d5f5a'; ctx.lineWidth = 1.4; ctx.stroke();
+      /* 黄色事件段（① ② …） */
+      ctx.font = '10px ui-monospace,Consolas,monospace';
+      (W.segs || []).forEach(function (sg, j) {
+        var i0 = Math.round(sg.t0 / D.t[steps - 1] * (steps - 1));
+        var i1 = Math.round(sg.t1 / D.t[steps - 1] * (steps - 1));
+        var x0 = X(i0), x1 = X(i1);
+        ctx.fillStyle = 'rgba(224,169,46,.20)';
+        ctx.fillRect(x0 - 1, y1, Math.max(4, x1 - x0 + 2), y0 - y1);
+        ctx.fillStyle = '#a8691c';
+        ctx.beginPath(); ctx.arc((x0 + x1) / 2, Y(Math.min(RMAX, sg.max)), 2.6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillText('黄' + (j + 1), (x0 + x1) / 2 - 6, Y(Math.min(RMAX, sg.max)) - 7);
+      });
+      /* x 轴日期刻度（每 3 天，逐刻计算日期） */
+      var total = D.t[steps - 1];
+      var t0ms = new Date(W.start.replace(' ', 'T') + ':00').getTime();
+      ctx.fillStyle = '#5d6e73'; ctx.font = '10px ui-monospace,Consolas,monospace';
+      ctx.textAlign = 'center';
+      for (var day = 0; day <= total; day += 1440 * 3) {
+        var i2 = Math.round(day / total * (steps - 1));
+        ctx.beginPath(); ctx.moveTo(X(i2), y0); ctx.lineTo(X(i2), y0 + 4); ctx.strokeStyle = '#a99e85'; ctx.stroke();
+        var dd = new Date(t0ms + day * 60000);
+        ctx.fillText(pad2(dd.getMonth() + 1) + '-' + pad2(dd.getDate()), X(i2), y0 + 15);
+      }
+      ctx.textAlign = 'left';
+    }
+
+    function readout() {
+      var yellowH = (W.yellow_steps_5min * 5 / 60).toFixed(1);
+      read.innerHTML =
+        '<div class="vcell"><div class="vk">窗口</div><div class="vv">' + W.start.slice(5) + ' → ' + W.end.slice(5) + '</div></div>' +
+        '<div class="vcell"><div class="vk">窗口最高容量比</div><div class="vv">' + fmt(W.max_ratio * 100, 1) + '%（黄色）</div></div>' +
+        '<div class="vcell"><div class="vk">黄色累计</div><div class="vv">' + yellowH + ' h（' + W.yellow_steps_5min + ' 步 × 5min）</div></div>' +
+        '<div class="vcell"><div class="vk">橙色 / 红色</div><div class="vv">' + W.orange_steps + ' / ' + W.red_steps + ' 步（0 真实正例）</div></div>' +
+        '<div class="vcell"><div class="vk">黄色事件段（演示口径）</div><div class="vv">' + (W.segs || []).length + ' 段</div></div>';
+    }
+
+    /* 悬停读数 */
+    c.cv.addEventListener('mousemove', function (ev) {
+      var r = c.cv.getBoundingClientRect();
+      var mx = ev.clientX - r.left;
+      var i = Math.round((mx - c.pad.l) / (c.w - c.pad.l - c.pad.r) * (steps - 1));
+      if (i < 0 || i >= steps) { tip.hide(); return; }
+      var mins = D.t[i];
+      var dd = tAt(W.start, mins);
+      tip.show(X(i), 12, '<b>' + fmtDT(dd) + '</b><br>容量比 ' + fmt(D.ratio[i] * 100, 1) + '% · ' + D.lvl[i]);
+    });
+    c.cv.addEventListener('mouseleave', function () { tip.hide(); });
+
+    /* ---- 表一：降雨预报增益（三配置 · 报告 §5.4 / rain_forecast_exp.json） ---- */
+    var t1 = E('div', 'vtable');
+    var rows1 = D.configs.map(function (cf) {
+      return '<tr><td>' + cf.name + '</td><td class="num">' + cf.nse.toFixed(3) + '</td>' +
+        '<td class="num">' + cf.yellow.hits + ' / ' + cf.yellow.events + '（' + fmt(cf.yellow.recall * 100) + '%）</td>' +
+        '<td class="num">' + cf.yellow.fa + '</td><td class="num">' + cf.orange.fa + '</td></tr>';
+    }).join('');
+    t1.innerHTML = '<table><tr><th>降雨预报配置</th><th class="num">+2h NSE</th><th class="num">黄色事件命中</th>' +
+      '<th class="num">黄色误报段</th><th class="num">橙色误报段</th></tr>' + rows1 + '</table>';
+    host.appendChild(t1);
+
+    /* ---- 表二：严格 / 运行双口径（报告 §5.5） ---- */
+    var t2 = E('div', 'vtable');
+    var rows2 = D.calibers.rows.map(function (r2) {
+      var s = (r2.strict_recall == null ? '—' : fmt(r2.strict_recall * 100) + '%') + ' / ' + r2.strict_fa;
+      var l = (r2.loose_recall == null ? '—' : fmt(r2.loose_recall * 100) + '%') + ' / ' + r2.loose_fa;
+      return '<tr><td>' + r2.level + '</td><td class="num">' + r2.events + '</td><td class="num">' + s + '</td><td class="num">' + l + '</td></tr>';
+    }).join('');
+    t2.innerHTML = '<table><tr><th>预警级</th><th class="num">事件数</th>' +
+      '<th class="num">严格口径 召回 / 误报段</th><th class="num">运行口径 召回 / 误报段</th></tr>' + rows2 + '</table>';
+    host.appendChild(t2);
+
+    var note = E('p', 'small muted');
+    note.style.margin = '10px 2px 0';
+    note.innerHTML = D.note + ' ' + D.calibers.note + ' 出处：<code>reports/warning_demo.csv</code> · <code>reports/rain_forecast_exp.json</code> · 技术报告 §5.4 / §5.5。';
+    host.appendChild(note);
+
+    onResize(function () { draw(); });
+    draw(); readout();
+  }
+
   /* ================= init ================= */
-  var BUILDERS = { event: buildEvent, predict: buildPredict, swmm: buildSwmm, stress: buildStress, models: buildModels, robust: buildRobust, shap: buildShap, delay: buildDelay, benefit: buildBenefit, network: buildNetwork };
+  var BUILDERS = { event: buildEvent, predict: buildPredict, swmm: buildSwmm, stress: buildStress, models: buildModels, robust: buildRobust, shap: buildShap, delay: buildDelay, benefit: buildBenefit, network: buildNetwork, events: buildEvents };
 
   function init(root) {
     var scope = root || document;
