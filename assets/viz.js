@@ -1114,23 +1114,26 @@ window.MWViz = (function () {
     draw();
   }
 
-  /* ================= 10. 厂网一张图（拓扑 · 液位热度 · 泵站状态） ================= */
+  /* ================= 10. 厂网一张图（官方骨架同构 · 地图式：缩放/平移/点选/时间条） ================= */
   var NET_STOPS = [
-    [0.00, [224, 242, 241]], [0.45, [128, 203, 196]], [0.70, [0, 121, 107]],
-    [0.86, [255, 179, 0]], [1.00, [211, 47, 47]]
+    [0.00, [232, 244, 242]], [0.45, [126, 200, 193]], [0.70, [13, 95, 90]],
+    [0.86, [200, 140, 28]], [1.00, [176, 58, 46]]
   ];
   function netColor(f) {
     f = Math.max(0, Math.min(1, f));
     for (var k = 1; k < NET_STOPS.length; k++) {
       if (f <= NET_STOPS[k][0]) {
         var a = NET_STOPS[k - 1], b = NET_STOPS[k];
-        var t = (f - a[0]) / ((b[0] - a[0]) || 1);
-        return 'rgb(' + Math.round(a[1][0] + (b[1][0] - a[1][0]) * t) + ',' +
-          Math.round(a[1][1] + (b[1][1] - a[1][1]) * t) + ',' +
-          Math.round(a[1][2] + (b[1][2] - a[1][2]) * t) + ')';
+        var tt = (f - a[0]) / ((b[0] - a[0]) || 1);
+        return 'rgb(' + Math.round(a[1][0] + (b[1][0] - a[1][0]) * tt) + ',' +
+          Math.round(a[1][1] + (b[1][1] - a[1][1]) * tt) + ',' +
+          Math.round(a[1][2] + (b[1][2] - a[1][2]) * tt) + ')';
       }
     }
-    return 'rgb(211,47,47)';
+    return 'rgb(176,58,46)';
+  }
+  function pumpRingColor(on) {
+    return on <= 0 ? '#c9c1ad' : (on === 1 ? '#e0a92e' : (on === 2 ? '#c8791e' : '#b03a2e'));
   }
 
   function buildNetwork(host) {
@@ -1140,29 +1143,31 @@ window.MWViz = (function () {
     var state = { i: 0, playing: false, speed: 72, last: 0 };
     var view = { k: 1, tx: 0, ty: 0 };
     var raf = null;
+    var opts = { labels: true, flow: true };
 
-    /* ---- 布局（0..1 相对坐标）：干线沿 x 轴按距厂距离；支线交替上下、向左上游延伸 ---- */
-    var MAXKM = 10.5, trunkY = 0.56;
+    /* ---- 世界坐标（0..1）：干线沿距厂距离布置；支线斜向接入（与 fig03 官方骨架同构） ---- */
     var byId = {}, pos = [];
     D.nodes.forEach(function (n, k) { byId[n.id] = k; });
+    var KMAX = 10.5;
+    function wx(km) { return 0.055 + (1 - km / KMAX) * 0.9; }
+    var trunkY = 0.52;
     D.nodes.forEach(function (n, k) {
-      if (n.kind !== 'branch') pos[k] = { x: 1 - n.km / MAXKM, y: trunkY };
+      if (n.kind !== 'branch') pos[k] = { x: wx(n.km), y: trunkY };
     });
-    var ATT = { B1: 'T09', B2: 'T04', B3: 'T10', B4: 'T03', B5: 'T11', B6: 'T05' };
-    ['B1', 'B2', 'B3', 'B4', 'B5', 'B6'].forEach(function (b, bi) {
-      var side = (bi % 2 === 0) ? 1 : -1;
-      var ap = pos[byId[ATT[b]]];
+    /* 支线接入点与朝向（1 = 干线上侧，-1 = 下侧）——与官方骨架图一致 */
+    var ATT = { B4: ['T03', 1], B2: ['T04', 1], B6: ['T05', -1], B1: ['T09', 1], B3: ['T10', -1], B5: ['T11', -1] };
+    var branchOf = {};
+    Object.keys(ATT).forEach(function (b) {
+      var ap = pos[byId[ATT[b][0]]], side = ATT[b][1];
       for (var j = 1; j <= 5; j++) {
-        pos[byId[b + '0' + j]] = { x: ap.x - 0.042 * j, y: trunkY + side * 0.062 * j };
+        pos[byId[b + '0' + j]] = { x: ap.x - 0.052 * j, y: trunkY + side * 0.062 * j };
+        branchOf[b + '0' + j] = b;
       }
     });
-    pos.forEach(function (p) {
-      p.x = Math.min(0.988, Math.max(0.012, p.x));
-      p.y = Math.min(0.93, Math.max(0.07, p.y));
-    });
+    pos.forEach(function (p) { p.x = Math.min(0.985, Math.max(0.015, p.x)); p.y = Math.min(0.95, Math.max(0.05, p.y)); });
     var plantIdx = byId['PLANT_IN'];
-    var pumpByNode = {};
-    D.pumps.forEach(function (pm) { pumpByNode[pm.node] = pm; });
+    var pumpByNode = {}, pumpIdxByNode = {};
+    D.pumps.forEach(function (pm, pi) { pumpByNode[pm.node] = pm; pumpIdxByNode[pm.node] = pi; });
 
     /* ---- 控件 ---- */
     var ctl = E('div', 'vctl');
@@ -1182,12 +1187,15 @@ window.MWViz = (function () {
     var zin = E('button', 'vbtn', '＋');
     var zout = E('button', 'vbtn', '－');
     var zreset = E('button', 'vbtn', '⟲ 复位');
+    var chipLab = chip('支线编号', true, function () { opts.labels = !opts.labels; chipLab.classList.toggle('on', opts.labels); draw(); });
+    var chipFlow = chip('流向动画', true, function () { opts.flow = !opts.flow; chipFlow.classList.toggle('on', opts.flow); draw(); });
     [zin, zout, zreset].forEach(function (b) { b.type = 'button'; });
     ctl.appendChild(btn); ctl.appendChild(spd); ctl.appendChild(range); ctl.appendChild(jump);
     ctl.appendChild(zin); ctl.appendChild(zout); ctl.appendChild(zreset);
+    ctl.appendChild(chipLab); ctl.appendChild(chipFlow);
     host.appendChild(ctl);
 
-    var c = chart(host, 460);
+    var c = chart(host, 470);
     c.pad = { l: 0, r: 0, t: 0, b: 0 };
     var tip = tooltip(c);
     var read = E('div', 'vread');
@@ -1197,27 +1205,23 @@ window.MWViz = (function () {
     host.appendChild(detail);
     var note = E('p', 'small muted');
     note.style.margin = '10px 2px 0';
-    note.textContent = '地图操作：滚轮缩放 · 拖拽平移 · 点节点看详情（液位/流量/泵站）· ＋/－/⟲ 复位。' +
-      '节点颜色 = 管网液位的当步相对高低（每步自适应标尺，越高越暖）；外环 = 泵站开机数（灰 0 · 黄 1 · 橙 2 · 红 ≥3）；最右侧为污水厂（PLANT_IN）。' +
-      '窗口：' + D.note + '；雨强为上海实测驱动，液位/流量/泵站为物理概化模拟。出处：data/simulated_realrain/（模拟口径）。';
+    note.innerHTML = '地图操作：滚轮缩放（指向缩放）· 拖拽平移 · 双击放大 · 点节点看详情 · ＋/－/⟲ 复位。' +
+      '<b>节点颜色 = 管网液位</b>（每步自适应标尺，越高越暖）；<b>泵站方框</b>（PS01–PS06）外环 = 开机数（灰 0 · 黄 1 · 橙 2 · 红 ≥3）；' +
+      '管段上的箭头 = 流向（支线 → 干线 → 厂前）；底部时间条可点击/拖动定位。' +
+      '窗口：' + D.note + '；雨强为上海实测驱动，液位/流量/泵站为物理概化模拟（口径见 results）。';
     host.appendChild(note);
 
-    function pumpRingColor(on) {
-      return on <= 0 ? '#cfd8dc' : (on === 1 ? '#ffd54f' : (on === 2 ? '#ffb300' : '#e53935'));
-    }
-
     function clampView() {
-      view.k = Math.max(0.7, Math.min(4.5, view.k));
+      view.k = Math.max(0.7, Math.min(5, view.k));
       var w = c.w, h = c.h;
-      var minTx = w * 0.25 - w * view.k, maxTx = w * 0.75;
-      var minTy = h * 0.20 - h * view.k, maxTy = h * 0.80;
+      var minTx = w * 0.3 - w * view.k, maxTx = w * 0.7;
+      var minTy = h * 0.25 - h * view.k, maxTy = h * 0.75;
       view.tx = Math.max(minTx, Math.min(maxTx, view.tx));
       view.ty = Math.max(minTy, Math.min(maxTy, view.ty));
     }
-
     function X(f) { return (30 + f * (c.w - 60)) * view.k + view.tx; }
     function Y(f) { return (16 + f * (c.h - 60)) * view.k + view.ty; }
-
+    function SZ(px) { return px * Math.min(1.9, Math.max(0.8, view.k)); }
     function stepRange(i) {
       var lv = D.lv[i], lo = Infinity, hi = -Infinity;
       for (var k2 = 0; k2 < lv.length; k2++) {
@@ -1228,6 +1232,7 @@ window.MWViz = (function () {
       return [lo, hi];
     }
 
+    /* ---- 主图绘制 ---- */
     function draw() {
       c.fit();
       var ctx = c.ctx, w = c.w, h = c.h;
@@ -1235,48 +1240,109 @@ window.MWViz = (function () {
       var i = state.i;
       var lv = D.lv[i];
       var sr = stepRange(i), stepLo = sr[0], stepHi = sr[1];
+      var kz = Math.min(1.9, Math.max(0.8, view.k));
 
-      /* 管段 */
+      /* 管段（宽度 = 管径档；颜色 = 两端液位均值；箭头 = 流向） */
+      var dashOff = opts.flow ? ((Date.now() / 45) % 14) : 0;
       D.links.forEach(function (l) {
         var a = pos[l[0]], b = pos[l[1]];
         var f = ((lv[l[0]] + lv[l[1]]) / 2 - stepLo) / (stepHi - stepLo);
+        var x1 = X(a.x), y1 = Y(a.y), x2 = X(b.x), y2 = Y(b.y);
         ctx.strokeStyle = netColor(f);
-        ctx.lineWidth = (l[2] >= 1800 ? 3.6 : (l[2] >= 1400 ? 2.4 : 1.5)) * Math.min(1.8, Math.max(0.85, view.k));
+        ctx.lineWidth = (l[2] >= 1800 ? 3.6 : (l[2] >= 1400 ? 2.4 : 1.5)) * kz;
         ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(X(a.x), Y(a.y)); ctx.lineTo(X(b.x), Y(b.y)); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+        if (opts.flow) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(255,255,255,.55)';
+          ctx.lineWidth = 1.1 * kz;
+          ctx.setLineDash([5 * kz, 9 * kz]);
+          ctx.lineDashOffset = -dashOff * kz;
+          ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+          ctx.restore();
+        }
+        /* 流向箭头（中点） */
+        var mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+        var ang = Math.atan2(y2 - y1, x2 - x1);
+        var asz = 3.2 * kz;
+        ctx.fillStyle = 'rgba(15,37,48,.55)';
+        ctx.beginPath();
+        ctx.moveTo(mx + Math.cos(ang) * asz, my + Math.sin(ang) * asz);
+        ctx.lineTo(mx + Math.cos(ang + 2.5) * asz, my + Math.sin(ang + 2.5) * asz);
+        ctx.lineTo(mx + Math.cos(ang - 2.5) * asz, my + Math.sin(ang - 2.5) * asz);
+        ctx.closePath(); ctx.fill();
       });
 
-      /* 泵站外环 */
-      var rk = Math.min(1.6, Math.max(0.9, view.k * 0.9));
+      /* 泵站方框 + 开机外环 */
       D.pumps.forEach(function (pm) {
-        var p = pos[pm.node], on = D.pon[i][D.pumps.indexOf(pm)];
-        var r = ((D.nodes[pm.node].kind === 'plant_inlet' ? 13 : 8) + 4.5) * rk;
-        ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), r, 0, Math.PI * 2);
-        ctx.strokeStyle = pumpRingColor(on); ctx.lineWidth = 3; ctx.stroke();
+        var p = pos[pm.node], pi = pumpIdxByNode[pm.node], on = D.pon[i][pi];
+        var x = X(p.x), y = Y(p.y);
+        var r = SZ(pm.node === plantIdx ? 13 : 8) + 4.5 * kz;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.strokeStyle = pumpRingColor(on); ctx.lineWidth = 2.6 * kz; ctx.stroke();
       });
 
       /* 节点 */
       D.nodes.forEach(function (n, k) {
         var p = pos[k];
         var f = (lv[k] - stepLo) / (stepHi - stepLo);
-        var r = (n.kind === 'plant_inlet' ? 13 : (n.kind === 'trunk' ? 8 : 6)) * rk;
+        var r = SZ(n.kind === 'plant_inlet' ? 12 : (n.kind === 'trunk' ? 7.5 : 5.5));
         ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), r, 0, Math.PI * 2);
         ctx.fillStyle = netColor(f); ctx.fill();
-        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.4; ctx.stroke();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.3 * kz; ctx.stroke();
       });
 
-      /* 干线标签 + 厂名 */
-      ctx.font = Math.round(11 * Math.min(1.5, Math.max(1, view.k))) + 'px system-ui,-apple-system,"Segoe UI",sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = C.muted;
-      D.nodes.forEach(function (n, k) {
-        if (n.kind === 'trunk' && n.km >= 2) {
-          ctx.fillText(n.id, X(pos[k].x), Y(pos[k].y) - 16 * rk);
-        }
-      });
+      /* 污水厂（建筑符号 + 名称） */
       var pp = pos[plantIdx];
-      ctx.fillStyle = C.tealD; ctx.font = '700 ' + Math.round(12 * Math.min(1.4, Math.max(1, view.k))) + 'px system-ui,-apple-system,"Segoe UI",sans-serif';
-      ctx.fillText('污水厂', X(pp.x) - 34 * rk, Y(pp.y) - 20 * rk);
+      var px = X(pp.x), py = Y(pp.y);
+      ctx.fillStyle = 'rgba(13,95,90,.12)';
+      ctx.strokeStyle = '#0d5f5a'; ctx.lineWidth = 1.6 * kz;
+      var bw = 26 * kz, bh = 20 * kz;
+      ctx.fillRect(px + 14 * kz, py - bh / 2, bw, bh);
+      ctx.strokeRect(px + 14 * kz, py - bh / 2, bw, bh);
+      ctx.fillStyle = 'rgba(13,95,90,.65)';
+      ctx.fillRect(px + 18 * kz, py - bh / 2 + 4 * kz, 4 * kz, bh - 8 * kz);
+      ctx.fillRect(px + 25 * kz, py - bh / 2 + 4 * kz, 4 * kz, bh - 8 * kz);
+      ctx.fillRect(px + 32 * kz, py - bh / 2 + 4 * kz, 4 * kz, bh - 8 * kz);
+      ctx.fillStyle = '#083f3c';
+      ctx.font = '700 ' + Math.round(12 * kz) + 'px system-ui,-apple-system,"Segoe UI",sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('泰和污水厂', px + 14 * kz + bw / 2, py - bh / 2 - 8 * kz);
+
+      /* 标签：干线节点（T01–T12）+ 泵站 + （可选）支线节点（Bx01 与泵站标签重叠，跳过） */
+      ctx.font = Math.round(10.5 * kz) + 'px ui-monospace,Consolas,monospace';
+      ctx.fillStyle = '#1b3d4a';
+      D.nodes.forEach(function (n, k) {
+        if (n.kind === 'trunk') ctx.fillText(n.id, X(pos[k].x), Y(pos[k].y) - 15 * kz);
+      });
+      if (opts.labels) {
+        ctx.fillStyle = '#5d6e73';
+        ctx.font = Math.round(9 * kz) + 'px ui-monospace,Consolas,monospace';
+        D.nodes.forEach(function (n, k) {
+          if (n.kind === 'branch' && !/01$/.test(n.id)) ctx.fillText(n.id, X(pos[k].x), Y(pos[k].y) - 11 * kz);
+        });
+      }
+      ctx.font = '700 ' + Math.round(10.5 * kz) + 'px ui-monospace,Consolas,monospace';
+      ctx.fillStyle = '#a8691c';
+      D.pumps.forEach(function (pm) {
+        var p = pos[pm.node];
+        ctx.fillText(pm.id, X(p.x), Y(p.y) + 22 * kz);
+      });
+      ctx.textAlign = 'left';
+
+      /* 距厂距离轴（世界坐标，随缩放平移） */
+      ctx.strokeStyle = 'rgba(15,37,48,.35)'; ctx.lineWidth = 1;
+      var axy = Y(0.86);
+      ctx.beginPath(); ctx.moveTo(X(0.03), axy); ctx.lineTo(X(0.985), axy); ctx.stroke();
+      ctx.font = '10px ui-monospace,Consolas,monospace';
+      ctx.fillStyle = '#5d6e73';
+      ctx.textAlign = 'center';
+      [10, 8, 6, 4, 2, 0].forEach(function (km) {
+        var x = X(wx(km));
+        ctx.beginPath(); ctx.moveTo(x, axy); ctx.lineTo(x, axy + 4); ctx.stroke();
+        ctx.fillText(km === 0 ? '0' : '-' + km, x, axy + 14);
+      });
+      ctx.fillText('距厂距离 (km)', X(0.5), axy + 27);
       ctx.textAlign = 'left';
 
       /* 色标（左下 · 本步范围 · 屏幕坐标，不随缩放） */
@@ -1284,13 +1350,88 @@ window.MWViz = (function () {
       var grd = ctx.createLinearGradient(lgX, 0, lgX + lgW, 0);
       for (var s = 0; s <= 10; s++) grd.addColorStop(s / 10, netColor(s / 10));
       ctx.fillStyle = grd; ctx.fillRect(lgX, lgY, lgW, lgH);
-      ctx.strokeStyle = '#cfd8dc'; ctx.lineWidth = 1; ctx.strokeRect(lgX, lgY, lgW, lgH);
-      ctx.fillStyle = C.muted; ctx.font = '10.5px system-ui,-apple-system,"Segoe UI",sans-serif';
+      ctx.strokeStyle = '#c9c1ad'; ctx.lineWidth = 1; ctx.strokeRect(lgX, lgY, lgW, lgH);
+      ctx.fillStyle = '#5d6e73'; ctx.font = '10.5px ui-monospace,Consolas,monospace';
       ctx.fillText('本步 ' + (stepLo / 1000).toFixed(2) + ' m', lgX, lgY - 6);
       ctx.fillText((stepHi / 1000).toFixed(2) + ' m', lgX + lgW - 38, lgY - 6);
-      /* 缩放指示（右下） */
       ctx.fillText('×' + view.k.toFixed(1), w - 54, h - 12);
+      drawStrip();
     }
+
+    /* ---- 时间条（底部 · 点击/拖动定位） ---- */
+    var stripH = 66;
+    var strip = E('div', 'vchart');
+    var scv = document.createElement('canvas');
+    scv.style.height = stripH + 'px';
+    scv.style.cursor = 'crosshair';
+    strip.appendChild(scv);
+    host.appendChild(strip);
+    var sctx = scv.getContext('2d');
+    var sw = 600;
+    function stripFit() {
+      sw = Math.max(280, strip.clientWidth || host.clientWidth || 600);
+      var dpr = window.devicePixelRatio || 1;
+      scv.width = Math.round(sw * dpr);
+      scv.height = Math.round(stripH * dpr);
+      scv.style.width = '100%';
+      sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    function stripX(i) { return 8 + i / (steps - 1) * (sw - 16); }
+    function stripI(mx) {
+      var i = Math.round((mx - 8) / (sw - 16) * (steps - 1));
+      return Math.max(0, Math.min(steps - 1, i));
+    }
+    function drawStrip() {
+      stripFit();
+      sctx.clearRect(0, 0, sw, stripH);
+      var i, x;
+      /* 雨强（柱 · 上半） */
+      var rmax = 0;
+      for (i = 0; i < steps; i++) if (D.rain[i] > rmax) rmax = D.rain[i];
+      sctx.fillStyle = 'rgba(93,110,115,.35)';
+      for (i = 0; i < steps; i++) {
+        if (D.rain[i] <= 0) continue;
+        x = stripX(i);
+        var bh = 4 + (D.rain[i] / (rmax || 1)) * 18;
+        sctx.fillRect(x - 0.6, 22 - bh, 1.4, bh);
+      }
+      /* 进厂流量（线 · 下半） */
+      var imin = Infinity, imax = -Infinity;
+      for (i = 0; i < steps; i++) { if (D.inflow[i] < imin) imin = D.inflow[i]; if (D.inflow[i] > imax) imax = D.inflow[i]; }
+      sctx.strokeStyle = '#0d5f5a'; sctx.lineWidth = 1.4;
+      sctx.beginPath();
+      for (i = 0; i < steps; i++) {
+        var y = 48 - (D.inflow[i] - imin) / ((imax - imin) || 1) * 20;
+        if (i === 0) sctx.moveTo(stripX(i), y); else sctx.lineTo(stripX(i), y);
+      }
+      sctx.stroke();
+      /* 8000 m³/h 设计能力线 */
+      var ycap = 48 - (8000 - imin) / ((imax - imin) || 1) * 20;
+      if (ycap > 26 && ycap < 49) {
+        sctx.strokeStyle = 'rgba(176,58,46,.55)'; sctx.setLineDash([4, 4]);
+        sctx.beginPath(); sctx.moveTo(8, ycap); sctx.lineTo(sw - 8, ycap); sctx.stroke();
+        sctx.setLineDash([]);
+      }
+      /* 播放头 */
+      sctx.strokeStyle = '#a8691c'; sctx.lineWidth = 1.6;
+      x = stripX(state.i);
+      sctx.beginPath(); sctx.moveTo(x, 4); sctx.lineTo(x, 52); sctx.stroke();
+      sctx.fillStyle = '#a8691c';
+      sctx.beginPath(); sctx.arc(x, 4, 3, 0, Math.PI * 2); sctx.fill();
+      sctx.fillStyle = '#5d6e73'; sctx.font = '9.5px ui-monospace,Consolas,monospace';
+      sctx.fillText('时间条（点击/拖动定位）· 灰柱=雨强 · 青线=进厂流量 · 红虚线=8000 m³/h · 2024-06-24 → 06-30', 8, stripH - 4);
+    }
+    var sDrag = false;
+    function sSeek(ev) {
+      var r = scv.getBoundingClientRect();
+      state.i = stripI(ev.clientX - r.left);
+      range.value = state.i;
+      stopPlay();
+      draw(); readout();
+    }
+    scv.addEventListener('mousedown', function (ev) { sDrag = true; sSeek(ev); });
+    window.addEventListener('mousemove', function (ev) { if (sDrag) sSeek(ev); });
+    window.addEventListener('mouseup', function () { sDrag = false; });
 
     function readout() {
       var i = state.i;
@@ -1313,21 +1454,25 @@ window.MWViz = (function () {
       var n = D.nodes[k], i = state.i;
       var lv = D.lv[i][k] / 1000, fl = D.fl[i][k];
       var kind = n.kind === 'trunk' ? '干线节点' : (n.kind === 'branch' ? '支线节点' : '厂前节点（进水）');
-      var html = '<b>' + n.id + '</b> · ' + kind + ' · 距厂 ' + n.km + ' km ｜ 时刻 ' + fmtDT(tAt(D.start, D.t[i])) +
-        ' ｜ 液位 <b>' + lv.toFixed(3) + ' m</b> ｜ 节点流量 <b>' + fl + ' m³/h</b>';
+      var extra = '';
+      if (branchOf[n.id]) extra = ' · 所属支线 ' + branchOf[n.id] + '（接入 ' + ATT[branchOf[n.id]][0] + '）';
       var pm = pumpByNode[k];
+      var cells = '<div class="vcell"><div class="vk">时刻</div><div class="vv">' + fmtDT(tAt(D.start, D.t[i])) + '</div></div>' +
+        '<div class="vcell"><div class="vk">液位</div><div class="vv">' + lv.toFixed(3) + ' m</div></div>' +
+        '<div class="vcell"><div class="vk">节点流量</div><div class="vv">' + fl + ' m³/h</div></div>';
       if (pm) {
-        var pi2 = D.pumps.indexOf(pm);
-        html += ' ｜ <b>' + pm.id + '</b> 泵站：开机 ' + D.pon[i][pi2] + '/' + pm.n + ' 台 · 前池液位 ' +
-          (D.pwl[i][pi2] / 10).toFixed(1) + ' m · 设计能力 ' + pm.cap + ' m³/h';
+        var pi2 = pumpIdxByNode[k];
+        cells += '<div class="vcell wide"><div class="vk">' + pm.id + ' 泵站</div><div class="vv">开机 ' + D.pon[i][pi2] + '/' + pm.n +
+          ' 台 · 前池 ' + (D.pwl[i][pi2] / 10).toFixed(1) + ' m · 设计能力 ' + pm.cap + ' m³/h</div></div>';
       }
-      detail.innerHTML = html + ' <a href="#" class="vd-close" style="margin-left:8px">收起</a>';
+      detail.innerHTML = '<b>' + n.id + '</b> · ' + kind + ' · 距厂 ' + n.km + ' km' + extra +
+        ' <a href="#" class="vd-close" style="margin-left:8px;color:#083f3c">收起</a>' +
+        '<div class="vread" style="margin-top:8px">' + cells + '</div>';
       detail.style.display = 'block';
       var cl = detail.querySelector('.vd-close');
       if (cl) cl.addEventListener('click', function (ev) { ev.preventDefault(); detail.style.display = 'none'; });
     }
 
-    /* 命中检测（节点） */
     function nodeAt(mx, my) {
       var best = -1, bd = 16 * 16;
       D.nodes.forEach(function (n, k) {
@@ -1349,22 +1494,21 @@ window.MWViz = (function () {
       range.value = state.i;
       draw(); readout();
       if (state.i >= steps - 1) {
-        state.playing = false; btn.textContent = '▶ 重播'; btn.classList.remove('on'); state.i = 0;
+        state.playing = false; btn.textContent = '▶ 重播'; btn.classList.remove('on');
         return;
       }
       raf = requestAnimationFrame(tick);
     }
-
     function stopPlay() {
       if (state.playing) {
         state.playing = false; btn.textContent = '▶ 继续'; btn.classList.remove('on');
         if (raf) cancelAnimationFrame(raf);
       }
     }
-
     btn.addEventListener('click', function () {
       if (state.playing) { stopPlay(); }
       else {
+        if (state.i >= steps - 1) state.i = 0;
         state.playing = true; state.last = 0; btn.textContent = '⏸ 暂停'; btn.classList.add('on');
         raf = requestAnimationFrame(tick);
       }
@@ -1383,9 +1527,9 @@ window.MWViz = (function () {
       draw(); readout();
     });
 
-    /* 缩放 / 平移 */
+    /* 缩放 / 平移 / 双击 */
     function zoomAt(mx, my, factor) {
-      var k2 = Math.max(0.7, Math.min(4.5, view.k * factor));
+      var k2 = Math.max(0.7, Math.min(5, view.k * factor));
       var ratio = k2 / view.k;
       view.tx = mx - (mx - view.tx) * ratio;
       view.ty = my - (my - view.ty) * ratio;
@@ -1398,6 +1542,10 @@ window.MWViz = (function () {
       var r = c.cv.getBoundingClientRect();
       zoomAt(ev.clientX - r.left, ev.clientY - r.top, ev.deltaY < 0 ? 1.13 : 1 / 1.13);
     }, { passive: false });
+    c.cv.addEventListener('dblclick', function (ev) {
+      var r = c.cv.getBoundingClientRect();
+      zoomAt(ev.clientX - r.left, ev.clientY - r.top, 1.5);
+    });
     zin.addEventListener('click', function () { zoomAt(c.w / 2, c.h / 2, 1.25); });
     zout.addEventListener('click', function () { zoomAt(c.w / 2, c.h / 2, 1 / 1.25); });
     zreset.addEventListener('click', function () { view.k = 1; view.tx = 0; view.ty = 0; draw(); });
@@ -1421,7 +1569,6 @@ window.MWViz = (function () {
       c.cv.style.cursor = 'grab';
     });
 
-    /* 悬停：最近节点提示 */
     c.cv.addEventListener('mousemove', function (ev) {
       var r = c.cv.getBoundingClientRect();
       var mx = ev.clientX - r.left, my = ev.clientY - r.top;
@@ -1434,13 +1581,14 @@ window.MWViz = (function () {
         return;
       }
       var best = nodeAt(mx, my);
-      if (best < 0) { tip.hide(); return; }
+      if (best < 0) { tip.hide(); c.cv.style.cursor = 'grab'; return; }
+      c.cv.style.cursor = 'pointer';
       var n = D.nodes[best], lv = D.lv[state.i][best] / 1000, fl = D.fl[state.i][best];
       var rows = ['<b>' + n.id + '</b>（' + (n.kind === 'trunk' ? '干线' : (n.kind === 'branch' ? '支线' : '厂前')) +
         ' · ' + n.km + ' km）', '液位 ' + lv.toFixed(3) + ' m · 流量 ' + fl + ' m³/h'];
       var pm = pumpByNode[best];
       if (pm) {
-        var pi2 = D.pumps.indexOf(pm);
+        var pi2 = pumpIdxByNode[best];
         rows.push(pm.id + ' 泵站：开机 ' + D.pon[state.i][pi2] + '/' + pm.n + ' 台 · 前池 ' +
           (D.pwl[state.i][pi2] / 10).toFixed(1) + ' m');
       }

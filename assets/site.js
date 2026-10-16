@@ -256,6 +256,14 @@
       if(strip) Array.prototype.forEach.call(strip.children, function(b, i){
         b.classList.toggle('on', i + 1 === cur);
       });
+      var thumbs2 = root.querySelector('.ppt-thumbs');
+      if(thumbs2){
+        Array.prototype.forEach.call(thumbs2.children, function(im){
+          im.classList.toggle('on', parseInt(im.getAttribute('data-n'), 10) === cur);
+        });
+        var act = thumbs2.querySelector('img[data-n="' + cur + '"]');
+        if(act && act.scrollIntoView){ try{ act.scrollIntoView({block:'nearest'}); }catch(e){} }
+      }
     }
 
     /* 页码条 + 缩略图（缩略图后台顺序解密，不阻塞翻页） */
@@ -306,6 +314,8 @@
     });
     if(zoomSel) zoomSel.addEventListener('change', function(){
       root.setAttribute('data-zoom', zoomSel.value);
+      var st = root.querySelector('.ppt-st-zoom');
+      if(st) st.textContent = '缩放：' + (zoomSel.value === 'fit' ? '适应窗口' : zoomSel.value + '%');
     });
     var fsBtn = root.querySelector('.ppt-fs');
     if(fsBtn) fsBtn.addEventListener('click', function(){
