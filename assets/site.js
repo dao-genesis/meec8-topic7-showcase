@@ -126,23 +126,29 @@
     a.rel = a.rel || 'noopener';
   });
 
-  /* ---------- 6. 加密资源：图表解密 + 下载解密 ---------- */
+  /* ---------- 6. 加密资源：图表/幻灯片解密 + 下载解密 ---------- */
   (function(){
     var MW = window.__MW;
     if(!MW || !MW.pass) return;
 
-    /* 6a. 图表：img[src^="assets/figures/"] → 拉取 .enc → 解密 → blob URL */
-    document.querySelectorAll('img[src^="assets/figures/"]').forEach(function(img){
-      var encUrl = img.getAttribute('src') + '.enc';
+    /* 6a. 图表与幻灯片：img[src^="assets/figures/"] / img[src^="assets/slides/"] → 拉取 .enc → 解密 → blob URL */
+    function decryptImg(img){
+      var src = img.getAttribute('src') || '';
+      if(img.dataset.decDone) return;
+      img.dataset.decDone = '1';
+      var mime = /\.webp$/i.test(src) ? 'image/webp' : 'image/png';
+      var encUrl = src + '.enc';
       img.classList.add('enc-pending');
       MW.fetchDecrypt(encUrl, MW.pass).then(function(bytes){
-        img.src = URL.createObjectURL(new Blob([bytes], { type: 'image/png' }));
+        img.src = URL.createObjectURL(new Blob([bytes], { type: mime }));
         img.classList.remove('enc-pending');
       }).catch(function(){
         img.classList.remove('enc-pending');
-        img.alt = (img.alt || '图表') + '（解密失败，请刷新）';
+        img.alt = (img.alt || '图片') + '（解密失败，请刷新）';
       });
-    });
+    }
+    window.__MW.decryptImg = decryptImg;
+    document.querySelectorAll('img[src^="assets/figures/"], img[src^="assets/slides/"]').forEach(decryptImg);
 
     /* 6b. 下载：a[data-dec-name] → 拉取 .enc → 解密 → 触发下载原名 */
     document.querySelectorAll('a[data-dec-name]').forEach(function(a){
@@ -193,4 +199,112 @@
 
   /* ---------- 7. 交互可视化（页面含 [data-viz] 组件时启动） ---------- */
   if (window.MWViz) window.MWViz.init(document);
+
+  /* ---------- 8. PPTX 原版浏览器（页面含 .pptview 时启动） ---------- */
+  (function(){
+    var root = document.querySelector('.pptview');
+    if(!root) return;
+    var count = parseInt(root.getAttribute('data-count') || '0', 10);
+    if(!count) return;
+    var img = root.querySelector('.ppt-img');
+    var idxEl = root.querySelector('.ppt-idx');
+    var stage = root.querySelector('.ppt-stage');
+    var strip = root.querySelector('.ppt-strip');
+    var zoomSel = root.querySelector('.ppt-zoom');
+    var cur = 1;
+    var cache = {};
+    var MW = window.__MW;
+
+    function srcOf(n){ return 'assets/slides/slide-' + (n < 10 ? '0' + n : n) + '.webp'; }
+
+    function load(n, cb){
+      if(cache[n]){ cb(cache[n]); return; }
+      var url = srcOf(n);
+      if(!MW || !MW.pass){ cb(url); return; }   /* 明文镜像：直链 */
+      MW.fetchDecrypt(url + '.enc', MW.pass).then(function(bytes){
+        var burl = URL.createObjectURL(new Blob([bytes], { type: 'image/webp' }));
+        cache[n] = burl;
+        cb(burl);
+      }).catch(function(){ cb(null); });
+    }
+
+    function show(n){
+      cur = Math.max(1, Math.min(count, n));
+      if(idxEl) idxEl.textContent = cur + ' / ' + count;
+      var pending = root.querySelector('.ppt-loading');
+      if(pending) pending.style.display = 'block';
+      load(cur, function(url){
+        if(url && img){ img.src = url; }
+        var p = root.querySelector('.ppt-loading');
+        if(p) p.style.display = 'none';
+        load(cur + 1 <= count ? cur + 1 : cur - 1, function(){});   /* 预取相邻页 */
+      });
+      if(strip) Array.prototype.forEach.call(strip.children, function(b, i){
+        b.classList.toggle('on', i + 1 === cur);
+      });
+    }
+
+    /* 页码条 + 缩略图（缩略图后台顺序解密，不阻塞翻页） */
+    if(strip){
+      for(var i = 1; i <= count; i++){
+        (function(n){
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'ppt-thumb';
+          b.textContent = n;
+          b.addEventListener('click', function(){ show(n); });
+          strip.appendChild(b);
+        })(i);
+      }
+      var thumbs = root.querySelector('.ppt-thumbs');
+      if(thumbs && MW && MW.pass !== undefined){
+        thumbs.addEventListener('click', function(e){
+          var im = e.target.closest('img');
+          if(im) show(parseInt(im.getAttribute('data-n'), 10) || 1);
+        });
+        var t = 1;
+        (function nextThumb(){
+          if(t > count) return;
+          var turl = 'assets/slides/thumb-' + (t < 10 ? '0' + t : t) + '.webp';
+          function put(src){
+            var im = thumbs.querySelector('img[data-n="' + t + '"]');
+            if(!im){
+              im = document.createElement('img');
+              im.setAttribute('data-n', t);
+              im.alt = '第 ' + t + ' 页';
+              thumbs.appendChild(im);
+            }
+            im.src = src;
+          }
+          if(!MW.pass){ put(turl); t++; setTimeout(nextThumb, 60); return; }
+          MW.fetchDecrypt(turl + '.enc', MW.pass).then(function(bytes){
+            put(URL.createObjectURL(new Blob([bytes], { type: 'image/webp' })));
+          }).catch(function(){}).then(function(){ t++; setTimeout(nextThumb, 60); });
+        })();
+      }
+    }
+
+    root.querySelector('.ppt-prev').addEventListener('click', function(){ show(cur - 1); });
+    root.querySelector('.ppt-next').addEventListener('click', function(){ show(cur + 1); });
+    if(stage) stage.addEventListener('click', function(e){
+      var r = stage.getBoundingClientRect();
+      show((e.clientX - r.left) < r.width * 0.25 ? cur - 1 : cur + 1);
+    });
+    if(zoomSel) zoomSel.addEventListener('change', function(){
+      root.setAttribute('data-zoom', zoomSel.value);
+    });
+    var fsBtn = root.querySelector('.ppt-fs');
+    if(fsBtn) fsBtn.addEventListener('click', function(){
+      if(document.fullscreenElement) document.exitFullscreen();
+      else if(root.requestFullscreen) root.requestFullscreen();
+    });
+    document.addEventListener('keydown', function(e){
+      if(e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' '){ e.preventDefault(); show(cur + 1); }
+      else if(e.key === 'ArrowLeft' || e.key === 'PageUp'){ e.preventDefault(); show(cur - 1); }
+      else if(e.key === 'Home'){ e.preventDefault(); show(1); }
+      else if(e.key === 'End'){ e.preventDefault(); show(count); }
+      else if(e.key === 'f' || e.key === 'F'){ if(fsBtn) fsBtn.click(); }
+    });
+    show(1);
+  })();
 })();

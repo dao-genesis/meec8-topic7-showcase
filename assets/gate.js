@@ -1,12 +1,13 @@
 /* 主题七成果展示站 · 口令门控与解密核心
    AES-256-GCM（PBKDF2-SHA256 200k 派生密钥）· 二进制格式: salt(16) | iv(12) | ciphertext
-   口令不落盘；错误口令由 AES-GCM 认证标签直接判定。 */
+   口令不落盘（明文）；设备级记忆：首次登录成功后自动存入 localStorage（本设备免再输），
+   页面导航时先进入"正在解锁"态避免口令框跳闪；可在门控卡片一键清除。 */
 (function () {
   'use strict';
 
   var ITERS = 200000;
   var SS_PASS = 'mw_pass';        // sessionStorage：本标签页会话
-  var LS_PASS = 'mw_pass_keep';   // localStorage：勾选"记住"时
+  var LS_PASS = 'mw_pass_keep';   // localStorage：设备级记忆（首次登录后自动写入）
 
   async function deriveKey(pass, salt) {
     var mat = await crypto.subtle.importKey(
@@ -61,6 +62,15 @@
   var btn = document.getElementById('gate-btn');
   var err = document.getElementById('gate-err');
   var keep = document.getElementById('gate-remember');
+  var forget = document.getElementById('gate-forget');
+  var clearBtn = document.getElementById('gate-clear');
+
+  function showUnlocking() {
+    if (input) input.style.display = 'none';
+    if (btn) btn.style.display = 'none';
+    if (keep) keep.style.display = 'none';
+    if (err) err.textContent = '正在解锁…';
+  }
 
   async function unlock(pass, remember) {
     if (!pass) { input.focus(); return; }
@@ -70,16 +80,19 @@
       var bytes = await fetchDecrypt('pages/' + page + '.enc', pass);
       var html = new TextDecoder().decode(bytes);
       window.__MW.pass = pass; window.__MW.ready = true;
-      sessionStorage.setItem(SS_PASS, pass);
-      if (remember) localStorage.setItem(LS_PASS, pass);
+      try { sessionStorage.setItem(SS_PASS, pass); } catch (e1) {}
+      try { localStorage.setItem(LS_PASS, pass); } catch (e2) {}   /* 设备级记忆：首次登录后自动 */
       document.open(); document.write(html); document.close();
     } catch (e) {
       btn.disabled = false; btn.textContent = '进入';
+      if (input) input.style.display = '';
+      if (btn) btn.style.display = '';
+      if (keep) keep.style.display = '';
       var msg = String((e && e.message) || e);
       err.textContent = msg.indexOf('HTTP') === 0
         ? ('页面文件加载失败（' + msg + '），请检查网络后重试')
         : (msg.indexOf('浏览器') >= 0 ? msg : '口令不正确，请重试');
-      sessionStorage.removeItem(SS_PASS); localStorage.removeItem(LS_PASS);
+      try { sessionStorage.removeItem(SS_PASS); localStorage.removeItem(LS_PASS); } catch (e3) {}
       gate.classList.add('shake');
       setTimeout(function () { gate.classList.remove('shake'); }, 500);
       input.select();
@@ -89,6 +102,21 @@
   btn.addEventListener('click', function () { unlock(input.value.trim(), keep && keep.checked); });
   input.addEventListener('keydown', function (e) { if (e.key === 'Enter') btn.click(); });
 
-  var saved = sessionStorage.getItem(SS_PASS) || localStorage.getItem(LS_PASS);
-  if (saved) { unlock(saved, false); } else { input.focus(); }
+  if (clearBtn) {
+    clearBtn.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      try { localStorage.removeItem(LS_PASS); sessionStorage.removeItem(SS_PASS); } catch (e) {}
+      location.reload();
+    });
+  }
+
+  var saved = null;
+  try { saved = sessionStorage.getItem(SS_PASS) || localStorage.getItem(LS_PASS); } catch (e4) {}
+  if (saved) {
+    showUnlocking();
+    if (forget) forget.style.display = 'block';
+    unlock(saved, false);
+  } else {
+    input.focus();
+  }
 })();
