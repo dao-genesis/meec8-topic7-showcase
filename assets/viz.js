@@ -2529,8 +2529,9 @@ window.MWViz = (function () {
       var q = pos[k];
       view.k = 1.9;
       var p = padRect();
-      view.tx = cw / 2 - (p.l + q.x * (cw - p.l - p.r)) * view.k;
-      view.ty = chh / 2 - (p.t + q.y * (chh - p.t - p.b)) * view.k;
+      var cx = p.l + (cw - p.l - p.r) / 2, cy = p.t + (chh - p.t - p.b) / 2;
+      view.tx = cx - (p.l + q.x * (cw - p.l - p.r)) * view.k;
+      view.ty = cy - (p.t + q.y * (chh - p.t - p.b)) * view.k;
       clampView(); draw();
     }
 
