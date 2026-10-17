@@ -12,7 +12,7 @@
 
 | 路径 | 内容 |
 |---|---|
-| `index.html` / `brief.html` / `logic.html` / `results.html` / `benchmark.html` / `qa.html` / `slides.html` / `demo.html` / `materials.html` | 九个"壳页"：口令门（输入口令 → 浏览器内解密 `pages/*.enc` 后整页渲染） |
+| `index.html` / `brief.html` / `logic.html` / `results.html` / `benchmark.html` / `qa.html` / `slides.html` / `demo.html` / `control.html` / `materials.html` | 十个"壳页"：口令门（输入口令 → 浏览器内解密 `pages/*.enc` 后整页渲染） |
 | `pages/*.enc` | 页面正文密文（AES-256-GCM；gzip 后加密） |
 | `assets/figures/*.png.enc` | 24 张图表密文（页面内解密为 Blob 显示，可点击放大） |
 | `downloads/*.enc` | 下载中心：技术报告（PDF/Word）/ 演示 PPT / **演示视频两版（网页系统实录 3~5 分钟 + 数据动画 67 秒）** / 源码包 / 问答与手册 / 数据目录 / 谱系 / 指标 JSON……点击"下载"后浏览器内解密并保存原文件 |
@@ -20,13 +20,14 @@
 | `sw.js` · `manifest.webmanifest` · `assets/icon-192.png` · `assets/icon-512.png` | **PWA**：手机"添加到主屏幕"、离线缓存已访问页面（仅密文） |
 | `benchmark.html` | **对标与定位**：SOTA 六条共识逐项落实 · Köln-Weiden 同数据集独立对照（Sonnenschein & Ziel 2023）· 五模型量化对比 · 评分细则映射 · 四条路线定位矩阵 |
 | `demo.html` | **交互演示（11 组件）**：暴雨事件 23 天回放 · **厂网一张图（官方骨架同构 · 缩放/平移/点选 · 输送延迟 τ · 泵站前池小图 · 时间条）** · 预测浏览器（真值 vs P10–P90 · 多模型叠加）· SWMM 策略对比 · P=100a 增广前后 · 模型与效率 · 容错台 · SHAP · 输送延迟台 · 效益计算器 · **预警事件尺度指标（四级阈值尺 · 23 天时间线 · 双口径命中表）**（全部由主仓库真源 CSV 驱动） |
+| `control.html` | **调度控制中心（演示 · 深色控制台）**：场景推演（SWMM 四策略 / P=100a 增广前后）· 终端日志流 · 实时 KPI · 预警工单 · 数据资产 · 系统状态（数据为仓库真源回放，非实时 SCADA） |
 | `assets/viz.js` | 交互可视化引擎（无依赖 · Canvas；数据随页面加密内嵌） |
 | `assets/gate.js` · `assets/site.js` · `assets/site.css` · `assets/favicon.svg` | 门控与解密核心（设备级记忆 · 静默解锁无跳闪）/ 共享脚本（**PowerPoint 式 PPTX 浏览器**：左侧缩略图栏 + 工具栏 + 状态条）/ **视觉系统 v4「工程卷宗 · 图纸集」**（图签栏 · 图号 · 印章 · 双通道）/ 图标 |
 | `robots.txt` | 禁止搜索引擎收录 |
 
 页面一览：首页（双通道：评审 / 工作台 · 输送延迟图 · 核心数字 · 评审导览表）· 官方速览（90 秒读懂）· 底层逻辑（七步详解 · 自测 10 问）·
 结果全景（24 图 + 全部实验数字）· **对标与定位**（同数据集对照 · 评分映射）· 复习问答（39 问）·
-**演示稿（原版 PPTX 直显 · PowerPoint 式版式）** · 交互演示（10 组件 · 厂网一张图可缩放）· 材料与复现（下载中心 + 一键复现 + 谱系核验 + 双视频在线播放）。
+**演示稿（原版 PPTX 直显 · PowerPoint 式版式）** · 交互演示（11 组件 · 厂网一张图可缩放）· **控制中心（场景推演 · 预警工单 · 数据资产）** · 材料与复现（下载中心 + 一键复现 + 谱系核验 + 双视频在线播放 · **均配中文解说音轨**）。
 
 ## 安全模型
 
