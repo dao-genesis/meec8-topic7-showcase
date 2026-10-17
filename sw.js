@@ -4,7 +4,7 @@
    ⚠️ 维护者纪律：每次重建站点（图表 / 幻灯片 / 下载物有更新）时把 CACHE 版本号 +1，
       否则老访客的「缓存优先」资源会停留在旧版（v3 血泪：站点更新了、访客没变化）。
    说明：本站内容以 AES-256-GCM 密文分发，缓存中同样只有密文。 */
-var CACHE = 'mw7-cache-v6';
+var CACHE = 'mw7-cache-v7';
 var CORE = ['./', 'index.html', 'brief.html', 'logic.html', 'results.html', 'benchmark.html',
             'qa.html', 'slides.html', 'demo.html', 'control.html', 'materials.html', 'assets/site.css',
             'assets/site.js', 'assets/viz.js', 'assets/gate.js', 'assets/favicon.svg',
