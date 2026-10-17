@@ -1803,8 +1803,352 @@ window.MWViz = (function () {
     draw(); readout();
   }
 
+  /* ================= 12. 调度控制中心（演示 · 场景推演） ================= */
+  var CT = { bg: '#0a1418', grid: '#14333b', dim: '#6b8c88', txt: '#cfe6e1', teal: '#0d8f80', light: '#7fd8cd',
+             amber: '#e0a92e', red: '#e25c4c', green: '#4fd1a5' };
+
+  function buildControl(host) {
+    var D = data('control');
+    if (!D) return;
+    var st = { mode: 'swmm', strat: 'predict', smodel: 'aug', running: false, prog: 0, raf: null, logs: [], done: false };
+
+    var root = E('div', 'ctrl-root');
+    root.innerHTML =
+      '<div class="ctrl-topbar">' +
+        '<div class="ctrl-lights">' +
+          '<span class="ctrl-light"><i></i>模型服务 · LightGBM 分位数（P10–P90）</span>' +
+          '<span class="ctrl-light"><i></i>数据链路 · 仓库真源回放</span>' +
+          '<span class="ctrl-light"><i class="warn"></i>SCADA · 未接入（演示模式）</span>' +
+        '</div>' +
+        '<div class="ctrl-clock">演示模式 · <span id="ctrl-clock">--:--:--</span></div>' +
+      '</div>' +
+      '<div class="ctrl-grid">' +
+        '<div class="ctrl-panel">' +
+          '<h4>场景推演控制台</h4>' +
+          '<div class="ctrl-tabs">' +
+            '<button class="ctrl-tab on" data-mode="swmm">调度策略推演</button>' +
+            '<button class="ctrl-tab" data-mode="stress">极端雨型推演</button>' +
+          '</div>' +
+          '<div id="ctrl-params"></div>' +
+          '<button class="ctrl-run" id="ctrl-run">▶ 开始推演</button>' +
+          '<div class="ctrl-bar"><i id="ctrl-bar"></i></div>' +
+          '<div class="ctrl-status" id="ctrl-status">待机 · 选择场景后点击「开始推演」</div>' +
+          '<div class="ctrl-log" id="ctrl-log"></div>' +
+        '</div>' +
+        '<div class="ctrl-panel">' +
+          '<h4 id="ctrl-title">主态势 · 厂前入流（m³/s）</h4>' +
+          '<div class="vchart" id="ctrl-chart"></div>' +
+          '<div class="ctrl-kpis" id="ctrl-kpis"></div>' +
+          '<div class="ctrl-legend" id="ctrl-legend"></div>' +
+        '</div>' +
+        '<div class="ctrl-panel">' +
+          '<h4>预警工单（运行口径 · 演示）</h4>' +
+          '<div id="ctrl-tickets"></div>' +
+          '<h4 style="margin-top:14px">数据资产（DATA_CATALOG 摘要）</h4>' +
+          '<div class="ctrl-assets"><table class="ctrl-table" id="ctrl-assets"></table></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="ctrl-foot" id="ctrl-foot"></div>' +
+      '<div class="ctrl-note">' + D.note + '</div>';
+    host.appendChild(root);
+
+    var $ = function (id) { return root.querySelector('#' + id); };
+    var paramsEl = $('ctrl-params'), runBtn = $('ctrl-run'), barEl = $('ctrl-bar'), statusEl = $('ctrl-status'),
+        logEl = $('ctrl-log'), kpiEl = $('ctrl-kpis'), titleEl = $('ctrl-title'), legendEl = $('ctrl-legend');
+    var chartBox = $('ctrl-chart');
+
+    /* 时钟 */
+    (function clock() {
+      var el = $('ctrl-clock');
+      function tick() {
+        var d = new Date();
+        if (el) el.textContent = pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+      }
+      tick(); setInterval(tick, 1000);
+    })();
+
+    /* 工单 + 资产 + 系统状态 */
+    var tk = $('ctrl-tickets');
+    tk.innerHTML = D.tickets.map(function (t) {
+      return '<div class="ctrl-ticket"><span class="id">' + t.id + '</span> · ' + t.time + ' · <b>' + t.level +
+        '</b>（峰值 ' + fmt(t.peak * 100, 1) + '% · ' + t.dur_min + ' min）<br>' +
+        '<span class="adv">' + t.advice + '</span><br><span class="st">● ' + t.status + '</span></div>';
+    }).join('');
+    var as = $('ctrl-assets');
+    as.innerHTML = '<tr><th>数据</th><th>来源 / 许可</th><th>性质</th></tr>' + D.assets.map(function (a) {
+      return '<tr><td>' + a.name + '</td><td>' + a.src + '</td><td>' + a.kind + '</td></tr>';
+    }).join('');
+    $('ctrl-foot').innerHTML = '<span>模型：' + D.system.model + '</span><span>数据：' + D.system.data + '</span>' +
+      '<span>容错：' + D.system.sensors + '</span><span>预警：' + D.system.alert + '</span><span>复现：' + D.system.repro + '</span>';
+
+    /* 参数面板 */
+    function renderParams() {
+      if (st.mode === 'swmm') {
+        paramsEl.innerHTML = '<div class="ctrl-chips" id="ctrl-strats">' + D.strategies.map(function (s) {
+          return '<button class="ctrl-chip' + (s.key === st.strat ? ' on' : '') + '" data-strat="' + s.key + '">' + s.name + '</button>';
+        }).join('') + '</div><div class="ctrl-note">场景：P=50a 设计暴雨 · 7 天 · 安全阈值 ' + D.safe_cms + ' m³/s · ' + D.inp + '</div>';
+        paramsEl.querySelectorAll('[data-strat]').forEach(function (b) {
+          b.addEventListener('click', function () { st.strat = b.getAttribute('data-strat'); renderParams(); draw(); });
+        });
+      } else {
+        paramsEl.innerHTML = '<div class="ctrl-chips" id="ctrl-models">' +
+          '<button class="ctrl-chip' + (st.smodel === 'base' ? ' on' : '') + '" data-sm="base">基准模型（常规工况训练）</button>' +
+          '<button class="ctrl-chip' + (st.smodel === 'aug' ? ' on' : '') + '" data-sm="aug">增广模型（+P5/P50）</button>' +
+          '</div><div class="ctrl-note">场景：' + D.stress.note + ' · 洪峰 ' + fmt(D.stress.peak_true) + ' m³/h</div>';
+        paramsEl.querySelectorAll('[data-sm]').forEach(function (b) {
+          b.addEventListener('click', function () { st.smodel = b.getAttribute('data-sm'); renderParams(); draw(); });
+        });
+      }
+    }
+
+    /* 画布 */
+    var cv = document.createElement('canvas');
+    cv.style.height = '300px';
+    cv.style.width = '100%';
+    chartBox.appendChild(cv);
+    var ctx = cv.getContext('2d');
+    var cw = 600, chh = 300;
+    function fit() {
+      cw = Math.max(320, chartBox.clientWidth || 640);
+      chh = 300;
+      var dpr = window.devicePixelRatio || 1;
+      cv.width = Math.round(cw * dpr);
+      cv.height = Math.round(chh * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    var pad = { l: 56, r: 14, t: 16, b: 26 };
+
+    function draw() {
+      fit();
+      ctx.clearRect(0, 0, cw, chh);
+      ctx.fillStyle = CT.bg;
+      ctx.fillRect(0, 0, cw, chh);
+      if (st.mode === 'swmm') drawSwmm(); else drawStress();
+    }
+
+    function axes(xlab, ymax, yfmt) {
+      ctx.strokeStyle = CT.grid; ctx.lineWidth = 1;
+      ctx.font = '10px ui-monospace,Consolas,monospace';
+      ctx.fillStyle = CT.dim;
+      for (var i = 0; i <= 4; i++) {
+        var y = pad.t + (chh - pad.t - pad.b) * i / 4;
+        ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(cw - pad.r, y); ctx.stroke();
+        ctx.textAlign = 'right';
+        ctx.fillText(yfmt(ymax * (1 - i / 4)), pad.l - 6, y + 3);
+      }
+      ctx.textAlign = 'center';
+      xlab.forEach(function (p) {
+        ctx.fillText(p[0], p[1], chh - pad.b + 14);
+      });
+      ctx.textAlign = 'left';
+    }
+
+    function drawSwmm() {
+      var T = D.swmm.t, N = T.length;
+      var ymax = 6.5;
+      var Y = function (v) { return chh - pad.b - (v / ymax) * (chh - pad.t - pad.b); };
+      var X = function (i) { return pad.l + i / (N - 1) * (cw - pad.l - pad.r); };
+      axes([['07-01', X(0)], ['07-03', X(N * 2 / 6)], ['07-05', X(N * 4 / 6)], ['07-07', X(N - 1)]], ymax, function (v) { return v.toFixed(1); });
+      /* 其他策略（淡） */
+      D.strategies.forEach(function (s) {
+        if (s.key === st.strat) return;
+        ctx.strokeStyle = 'rgba(127,216,205,.16)'; ctx.lineWidth = 1;
+        ctx.beginPath();
+        D.swmm.curves[s.key].forEach(function (v, i) { i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v)); });
+        ctx.stroke();
+      });
+      /* 安全阈值线 */
+      var ys = Y(D.safe_cms);
+      ctx.strokeStyle = 'rgba(224,169,46,.85)'; ctx.setLineDash([6, 4]); ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(pad.l, ys); ctx.lineTo(cw - pad.r, ys); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = CT.amber; ctx.font = '10px ui-monospace,Consolas,monospace';
+      ctx.fillText('安全阈值 ' + D.safe_cms + ' m³/s', pad.l + 6, ys - 5);
+      /* 选中策略（按进度揭示） */
+      var cur = D.swmm.curves[st.strat];
+      var upto = Math.max(1, Math.round(st.prog * (N - 1)));
+      ctx.strokeStyle = CT.light; ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      for (var i = 0; i <= upto; i++) { i ? ctx.lineTo(X(i), Y(cur[i])) : ctx.moveTo(X(i), Y(cur[i])); }
+      ctx.stroke();
+      /* 超阈区（已揭示部分） */
+      ctx.fillStyle = 'rgba(224,169,46,.22)';
+      ctx.beginPath();
+      ctx.moveTo(X(0), ys);
+      for (i = 0; i <= upto; i++) ctx.lineTo(X(i), Y(Math.max(cur[i], D.safe_cms)));
+      ctx.lineTo(X(upto), ys); ctx.closePath(); ctx.fill();
+      /* 进度游标 */
+      ctx.strokeStyle = 'rgba(127,216,205,.6)';
+      ctx.beginPath(); ctx.moveTo(X(upto), pad.t); ctx.lineTo(X(upto), chh - pad.b); ctx.stroke();
+      titleEl.textContent = '主态势 · 厂前入流（m³/s）· ' + D.strategies.filter(function (s) { return s.key === st.strat; })[0].name;
+      legendEl.innerHTML = '<span><i style="background:' + CT.light + '"></i>当前策略</span>' +
+        '<span><i style="background:rgba(127,216,205,.3)"></i>其他策略（对照）</span>' +
+        '<span><i style="background:' + CT.amber + '"></i>超阈区 / 安全阈值</span>';
+    }
+
+    function drawStress() {
+      var T = D.stress.t, N = T.length;
+      var ymax = 60000;
+      var Y = function (v) { return chh - pad.b - (v / ymax) * (chh - pad.t - pad.b); };
+      var X = function (i) { return pad.l + i / (N - 1) * (cw - pad.l - pad.r); };
+      axes([['0h', X(0)], ['6h', X(N * 1 / 4)], ['12h', X(N / 2)], ['18h', X(N * 3 / 4)], ['24h', X(N - 1)]], ymax,
+        function (v) { return (v / 1000).toFixed(0) + 'k'; });
+      var upto = Math.max(1, Math.round(st.prog * (N - 1)));
+      /* 真值 */
+      ctx.strokeStyle = CT.light; ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      for (var i = 0; i <= upto; i++) { i ? ctx.lineTo(X(i), Y(D.stress.truth[i])) : ctx.moveTo(X(i), Y(D.stress.truth[i])); }
+      ctx.stroke();
+      /* 模型 */
+      var mk = st.smodel === 'aug' ? 'aug' : 'base';
+      var mc = st.smodel === 'aug' ? CT.green : CT.red;
+      ctx.strokeStyle = mc; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (i = 0; i <= upto; i++) { i ? ctx.lineTo(X(i), Y(D.stress[mk][i])) : ctx.moveTo(X(i), Y(D.stress[mk][i])); }
+      ctx.stroke();
+      /* 设计能力线 */
+      var y8 = Y(8000);
+      ctx.strokeStyle = 'rgba(224,169,46,.7)'; ctx.setLineDash([6, 4]);
+      ctx.beginPath(); ctx.moveTo(pad.l, y8); ctx.lineTo(cw - pad.r, y8); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = CT.amber; ctx.font = '10px ui-monospace,Consolas,monospace';
+      ctx.fillText('设计能力 8000 m³/h', pad.l + 6, y8 - 5);
+      titleEl.textContent = '主态势 · 厂前入流（m³/h）· P=100a 极端雨型';
+      legendEl.innerHTML = '<span><i style="background:' + CT.light + '"></i>真值（模拟）</span>' +
+        '<span><i style="background:' + CT.red + '"></i>基准模型</span>' +
+        '<span><i style="background:' + CT.green + '"></i>增广模型</span>';
+    }
+
+    /* KPI（实时累计） */
+    function updateKpis(final) {
+      if (st.mode === 'swmm') {
+        var cur = D.swmm.curves[st.strat], N = cur.length;
+        var upto = Math.max(1, Math.round(st.prog * (N - 1)));
+        var dtS = (D.swmm.step_min || 5) * 60;
+        var peak = 0, overSteps = 0, vol = 0;
+        for (var i = 0; i <= upto; i++) {
+          if (cur[i] > peak) peak = cur[i];
+          if (cur[i] > D.safe_cms) { overSteps++; vol += (cur[i] - D.safe_cms) * dtS; }
+        }
+        var s = D.strategies.filter(function (x) { return x.key === st.strat; })[0];
+        kpiEl.innerHTML =
+          kpi('峰值入流', fmt(peak, 2) + ' m³/s', peak > D.safe_cms ? 'bad' : 'good') +
+          kpi('超阈历时' + (final ? '（结算）' : '（累计）'), (final ? fmt(s.over_h, 1) : (overSteps * dtS / 3600).toFixed(1)) + ' h', overSteps ? 'warn' : 'good') +
+          kpi('超阈体积' + (final ? '（结算）' : '（累计）'), (final ? fmt(s.over_vol, 2) : (vol / 1e4).toFixed(2)) + ' 万m³', vol ? 'warn' : 'good') +
+          kpi('前池冒溢（结算）', final ? fmt(s.spill, 2) + ' 万m³' : '—', s.spill_delta > 0.5 ? 'warn' : 'good') +
+          kpi('相对无调控削峰', final ? (s.cut >= 0 ? '−' : '+') + fmt(Math.abs(s.cut), 1) + '%' : '—', s.cut > 20 ? 'good' : '');
+      } else {
+        var N = D.stress.t.length;
+        var upto = Math.max(1, Math.round(st.prog * (N - 1)));
+        var tp = 0, mp = 0;
+        for (var i = 0; i <= upto; i++) {
+          if (D.stress.truth[i] > tp) tp = D.stress.truth[i];
+          var mv = st.smodel === 'aug' ? D.stress.aug[i] : D.stress.base[i];
+          if (mv > mp) mp = mv;
+        }
+        var errLive = tp > 0 ? (mp - tp) / tp : 0;
+        var errFinal = st.smodel === 'aug' ? D.stress.aug_err : D.stress.base_err;
+        var err = final ? errFinal : errLive;
+        var mpShow = final ? D.stress.peak_true * (1 + errFinal) : mp;
+        kpiEl.innerHTML =
+          kpi('真值洪峰（模拟）', fmt(final ? D.stress.peak_true : tp) + ' m³/h', '') +
+          kpi('模型峰值', fmt(mpShow) + ' m³/h', '') +
+          kpi('峰值误差' + (final ? '（结算）' : '（实时）'), (err * 100).toFixed(1) + '%', err < -0.2 ? 'bad' : 'good') +
+          kpi('NSE（结算）', final ? (st.smodel === 'aug' ? D.stress.aug_nse.toFixed(3) : D.stress.base_nse.toFixed(3)) : '—',
+              st.smodel === 'aug' ? 'good' : 'bad');
+      }
+    }
+    function kpi(k, v, cls) {
+      return '<div class="ctrl-kpi"><div class="k">' + k + '</div><div class="v ' + (cls || '') + '">' + v + '</div></div>';
+    }
+
+    /* 日志流 */
+    function logSeq() {
+      if (st.mode === 'swmm') {
+        var s = D.strategies.filter(function (x) { return x.key === st.strat; })[0];
+        var verdict = {
+          'static': '基线：无调控超阈体积最大（2.09 万m³）',
+          'rule': '建议：本地规则削峰 15.8%，但冒溢 +3.3%（需权衡）',
+          'predict': '建议：维持「预见性滚动（防冒溢保护）」—— 削峰 28.2% 且冒溢不增',
+          'predict_aggressive': '注意：激进限排削峰 89.5%，但冒溢 +6.2%（受纳水体敏感时不建议）'
+        }[st.strat];
+        return [
+          [0.02, '载入 SWMM 概化模型 · ' + D.inp],
+          [0.10, '场景：P=50a 设计暴雨 7 天 · 安全阈值 ' + D.safe_cms + ' m³/s'],
+          [0.22, '策略：' + s.name],
+          [0.40, '仿真推进 …（泵站启停按策略规则 · 5min 步长）'],
+          [0.62, '监测：厂前入流超阈累计中 …'],
+          [0.80, '结算：超阈历时 / 超阈体积 / 前池冒溢'],
+          [0.94, '结果：峰值 ' + fmt(s.peak, 2) + ' m³/s · 超阈 ' + fmt(s.over_h, 1) + ' h · 超阈体积 ' + fmt(s.over_vol, 2) + ' 万m³（' + (s.cut > 0 ? '−' + fmt(s.cut, 1) : '0') + '%）', true],
+          [0.99, '前池冒溢 ' + fmt(s.spill, 2) + ' 万m³（' + (s.spill_delta > 0 ? '+' : '') + fmt(s.spill_delta, 1) + '%）→ ' + verdict, true]
+        ];
+      }
+      var m = st.smodel;
+      return [
+        [0.02, '生成 P=100a 芝加哥雨型（2h · 洪峰 ' + fmt(D.stress.peak_true) + ' m³/h）'],
+        [0.12, '加载' + (m === 'aug' ? '增广模型（基准 + P5/P50 设计暴雨）' : '基准模型（2024 汛期基准 92 天）')],
+        [0.32, '模型外推中 …（常规工况训练未见过极端场景）'],
+        [0.55, '对比：基准模型洪峰误差 ' + fmt(D.stress.base_err * 100, 1) + '% · NSE ' + D.stress.base_nse.toFixed(3)],
+        [0.78, '增广：NSE ' + D.stress.base_nse.toFixed(3) + ' → ' + D.stress.aug_nse.toFixed(3) + ' · 峰值误差 ' +
+          fmt(D.stress.base_err * 100, 1) + '% → ' + fmt(D.stress.aug_err * 100, 1) + '%', true],
+        [0.99, '结论：增广需针对目标雨型设计（台风场景反而负迁移 → 增广非万能）', true]
+      ];
+    }
+    function streamLogs() {
+      var seq = logSeq();
+      seq.forEach(function (row) {
+        if (st.prog >= row[0] && st.logs.indexOf(row[1]) < 0) {
+          st.logs.push(row[1]);
+          var div = document.createElement('div');
+          if (row[2]) div.className = 'hi';
+          div.textContent = row[1];
+          logEl.appendChild(div);
+          logEl.scrollTop = logEl.scrollHeight;
+        }
+      });
+    }
+
+    /* 推演驱动 */
+    function start() {
+      if (st.running) return;
+      st.running = true; st.prog = 0; st.logs = []; st.done = false;
+      logEl.innerHTML = '';
+      runBtn.disabled = true; runBtn.textContent = '⏳ 推演中…';
+      statusEl.textContent = st.mode === 'swmm' ? '推演中 · P=50a 设计暴雨' : '推演中 · P=100a 极端雨型';
+      var t0 = performance.now(), dur = 4600;
+      (function step(now) {
+        st.prog = Math.min(1, (now - t0) / dur);
+        barEl.style.width = (st.prog * 100).toFixed(1) + '%';
+        draw(); updateKpis(false); streamLogs();
+        if (st.prog < 1) { st.raf = requestAnimationFrame(step); }
+        else {
+          st.running = false; st.done = true;
+          runBtn.disabled = false; runBtn.textContent = '⟲ 重新推演';
+          statusEl.textContent = '推演完成 · 结果已结算（演示口径）';
+          updateKpis(true);
+        }
+      })(performance.now());
+    }
+
+    runBtn.addEventListener('click', start);
+    root.querySelectorAll('.ctrl-tab').forEach(function (b) {
+      b.addEventListener('click', function () {
+        st.mode = b.getAttribute('data-mode');
+        root.querySelectorAll('.ctrl-tab').forEach(function (x) { x.classList.toggle('on', x === b); });
+        st.logs = []; logEl.innerHTML = '';
+        st.prog = 0; st.done = false;
+        barEl.style.width = '0%';
+        runBtn.textContent = '▶ 开始推演';
+        statusEl.textContent = '待机 · 选择场景后点击「开始推演」';
+        renderParams(); draw(); updateKpis(false);
+      });
+    });
+    onResize(function () { draw(); });
+    renderParams(); draw(); updateKpis(false);
+  }
+
   /* ================= init ================= */
-  var BUILDERS = { event: buildEvent, predict: buildPredict, swmm: buildSwmm, stress: buildStress, models: buildModels, robust: buildRobust, shap: buildShap, delay: buildDelay, benefit: buildBenefit, network: buildNetwork, events: buildEvents };
+  var BUILDERS = { event: buildEvent, predict: buildPredict, swmm: buildSwmm, stress: buildStress, models: buildModels, robust: buildRobust, shap: buildShap, delay: buildDelay, benefit: buildBenefit, network: buildNetwork, events: buildEvents, control: buildControl };
 
   function init(root) {
     var scope = root || document;
