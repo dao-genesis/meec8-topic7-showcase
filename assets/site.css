@@ -459,6 +459,66 @@ body.ctrl-page .note::before{border-color:#0d8f80;color:#7fd8cd;background:#0811
 .ctrl-legend{display:flex;flex-wrap:wrap;gap:12px;color:#8fb0ab;font-size:.72rem;margin-top:6px}
 .ctrl-legend i{display:inline-block;width:14px;height:3px;margin-right:5px;vertical-align:3px}
 
+/* ---------- 运营平台 · 地图大屏（一张图） ---------- */
+body.ctrl-page main{max-width:1360px}
+.twin-stage{position:relative;height:640px;background:#050b12;border:1px solid #0e2a30;overflow:hidden;
+  margin-top:14px;user-select:none}
+@media (max-width:900px){.twin-stage{height:520px}}
+.twin-cv{position:absolute;left:0;top:0;width:100%;height:100%;display:block;cursor:grab}
+.twin-cv.grabbing{cursor:grabbing}
+.twin-top{position:absolute;left:0;right:0;top:0;height:44px;display:flex;align-items:center;
+  justify-content:space-between;padding:0 14px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(4,16,15,.92),rgba(4,16,15,0))}
+.twin-title{color:#d7f5ef;font-family:var(--mono);font-size:.92rem;letter-spacing:.1em}
+.twin-title i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#2ecc71;
+  box-shadow:0 0 8px #2ecc71;margin-right:8px;vertical-align:1px}
+.twin-clock{color:#7fd8cd;font-family:var(--mono);font-size:.8rem}
+.twin-kpis{position:absolute;left:236px;right:256px;top:50px;display:flex;gap:6px}
+.twin-kpi{flex:1;background:rgba(8,20,24,.86);border:1px solid #14333b;padding:5px 10px;font-family:var(--mono);min-width:0}
+.twin-kpi .k{color:#6b8c88;font-size:.67rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.twin-kpi .v{color:#d7f5ef;font-size:.92rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.twin-kpi .v.good{color:#4fd1a5}
+.twin-kpi .v.warn{color:#e0a92e}
+.twin-kpi .v.bad{color:#e25c4c}
+.twin-left{position:absolute;left:12px;top:50px;width:212px;display:flex;flex-direction:column;gap:8px}
+.twin-right{position:absolute;right:12px;top:50px;bottom:84px;width:236px;display:flex;flex-direction:column;gap:8px}
+.twin-panel{background:rgba(8,20,24,.88);border:1px solid #14333b;padding:8px 10px;font-family:var(--mono)}
+.twin-panel h5{margin:0 0 6px;color:#7fd8cd;font-size:.72rem;letter-spacing:.08em;font-weight:600}
+.twin-chips{display:flex;flex-wrap:wrap;gap:5px}
+.twin-chip{background:#0f2227;border:1px solid #1d444d;color:#8fb0ab;padding:3px 8px;font-size:.7rem;
+  cursor:pointer;font-family:inherit}
+.twin-chip.on{background:#0d3f3a;border-color:#2c8f80;color:#d7f5ef}
+.twin-sta{display:flex;justify-content:space-between;gap:8px;padding:4px 6px;border:1px solid transparent;
+  color:#9fc4bf;font-size:.71rem;cursor:pointer;line-height:1.5}
+.twin-sta:hover{background:#0f2227;border-color:#1d444d}
+.twin-sta.on{background:#0d3f3a;border-color:#2c8f80;color:#d7f5ef}
+.twin-sta b{color:#7fd8cd;font-weight:600}
+.twin-tk{height:118px;overflow-y:auto;font-size:.69rem;line-height:1.65;color:#8fb0ab}
+.twin-tk div{padding:3px 0;border-bottom:1px dashed #14333b}
+.twin-tk b{color:#e0a92e}
+.twin-card{position:absolute;left:12px;bottom:88px;width:296px;background:rgba(8,20,24,.94);
+  border:1px solid #2c8f80;padding:10px 12px;font-family:var(--mono);font-size:.74rem;color:#cfe6e1;
+  display:none;line-height:1.7}
+.twin-card.show{display:block}
+.twin-card h6{margin:0 0 6px;color:#7fd8cd;font-size:.78rem}
+.twin-card .kv{color:#8fb0ab}
+.twin-card .kv b{color:#d7f5ef;font-weight:600}
+.twin-card .close{position:absolute;right:8px;top:6px;color:#6b8c88;cursor:pointer}
+.twin-bottom{position:absolute;left:0;right:0;bottom:0;height:76px;background:linear-gradient(0deg,rgba(4,16,15,.95),rgba(4,16,15,.6));
+  padding:4px 12px 6px;font-family:var(--mono)}
+.twin-bottom canvas{width:100%;height:44px;display:block;cursor:crosshair}
+.twin-ctl{display:flex;align-items:center;gap:8px;color:#8fb0ab;font-size:.7rem;margin-top:2px}
+.twin-btn{background:#0f2227;border:1px solid #1d444d;color:#cfe6e1;padding:3px 10px;font-size:.7rem;
+  cursor:pointer;font-family:inherit}
+.twin-btn:hover{background:#14343b}
+.twin-btn.on{background:#0d8f80;border-color:#0d8f80;color:#04191b}
+.twin-sel{background:#0f2227;border:1px solid #1d444d;color:#cfe6e1;font-size:.7rem;padding:3px 6px}
+.twin-legend{display:flex;flex-wrap:wrap;gap:8px;color:#8fb0ab;font-size:.68rem;margin-top:6px}
+.twin-legend i{display:inline-block;width:12px;height:3px;margin-right:4px;vertical-align:3px}
+.twin-hint{position:absolute;left:50%;transform:translateX(-50%);bottom:84px;color:#4f7d78;font-size:.68rem;
+  font-family:var(--mono);pointer-events:none}
+.twin-table{max-height:300px;overflow-y:auto}
+
 /* ---------- 灯箱 ---------- */
 #lightbox{display:none;position:fixed;inset:0;background:rgba(8,26,32,.94);z-index:99;
   align-items:center;justify-content:center;cursor:zoom-out}
