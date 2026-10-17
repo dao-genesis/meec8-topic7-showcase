@@ -473,7 +473,7 @@ body.ctrl-page main{max-width:1360px}
 .twin-title i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#2ecc71;
   box-shadow:0 0 8px #2ecc71;margin-right:8px;vertical-align:1px}
 .twin-clock{color:#7fd8cd;font-family:var(--mono);font-size:.8rem}
-.twin-kpis{position:absolute;left:236px;right:256px;top:50px;display:flex;gap:6px}
+.twin-kpis{position:absolute;left:236px;right:256px;top:50px;display:flex;gap:6px;pointer-events:none}
 .twin-kpi{flex:1;background:rgba(8,20,24,.86);border:1px solid #14333b;padding:5px 10px;font-family:var(--mono);min-width:0}
 .twin-kpi .k{color:#6b8c88;font-size:.67rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .twin-kpi .v{color:#d7f5ef;font-size:.92rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -517,6 +517,10 @@ body.ctrl-page main{max-width:1360px}
 .twin-legend i{display:inline-block;width:12px;height:3px;margin-right:4px;vertical-align:3px}
 .twin-hint{position:absolute;left:50%;transform:translateX(-50%);bottom:84px;color:#4f7d78;font-size:.68rem;
   font-family:var(--mono);pointer-events:none}
+.twin-sta .wl{display:inline-block;width:46px;height:6px;background:#12262c;border:1px solid #1d444d;
+  vertical-align:1px;margin-left:6px;overflow:hidden}
+.twin-sta .wl i{display:block;height:100%;background:linear-gradient(90deg,#0d8f80,#7fd8cd)}
+.twin-sta .wl i.hi{background:linear-gradient(90deg,#c8791e,#e0a92e)}
 .twin-table{max-height:300px;overflow-y:auto}
 
 /* ---------- 灯箱 ---------- */

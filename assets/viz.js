@@ -2423,8 +2423,68 @@ window.MWViz = (function () {
 
     function draw() {
       drawBase();
+      drawRain();
       drawNet();
+      drawAlert();
+      drawHoverTip();
       drawStrip();
+    }
+
+    /* 雨效：雨强 > 0 时地图上落雨（数字孪生氛围） */
+    function drawRain() {
+      var r = D.rain[st.i];
+      if (!r || r <= 0.05) return;
+      var n = Math.min(140, Math.round(r * 26));
+      var tnow = Date.now() / 1000;
+      var p = padRect();
+      var w = cw - p.l - p.r, h = chh - p.t - p.b;
+      ctx.strokeStyle = 'rgba(127,216,205,.30)';
+      ctx.lineWidth = 1;
+      for (var i2 = 0; i2 < n; i2++) {
+        var fx = ((i2 * 97) % 100) / 100, fy = ((i2 * 61) % 100) / 100;
+        var x = p.l + fx * w, y = p.t + ((fy + tnow * 0.22) % 1) * h;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - 3, y + 9);
+        ctx.stroke();
+      }
+    }
+
+    /* 告警呼吸：容量比越限时，厂前节点脉冲 */
+    function drawAlert() {
+      var ratio = D.inflow[st.i] / 8000;
+      if (ratio < 0.8) return;
+      var col = ratio >= 1.1 ? 'rgba(226,92,76,' : (ratio >= 0.95 ? 'rgba(200,121,30,' : 'rgba(224,169,46,');
+      var pulse = 0.5 + 0.5 * Math.sin(Date.now() / 320);
+      var pq = pos[plantIdx];
+      var x = X(pq.x), y = Y(pq.y);
+      for (var ring = 1; ring <= 2; ring++) {
+        ctx.beginPath();
+        ctx.arc(x + 20 * SZ(1), y, (18 + ring * 13 + pulse * 6) * SZ(1), 0, Math.PI * 2);
+        ctx.strokeStyle = col + (0.55 / ring * (0.5 + pulse * 0.5)) + ')';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+
+    /* 悬停读数（画布内小卡） */
+    function drawHoverTip() {
+      if (hover < 0) return;
+      var n = D.nodes[hover], i = st.i;
+      var q = pos[hover];
+      var lv = (D.lv[i][hover] / 1000).toFixed(3), fl = D.fl[i][hover];
+      var l1 = n.id + ' · ' + (n.kind === 'trunk' ? '干线' : (n.kind === 'branch' ? '支线' : '厂前'));
+      var l2 = '液位 ' + lv + ' m · 流量 ' + fl + ' m³/h' + (n.tau_h != null ? ' · τ ' + n.tau_h.toFixed(2) + ' h' : '');
+      ctx.font = '10.5px ui-monospace,Consolas,monospace';
+      var wpx = Math.max(ctx.measureText(l1).width, ctx.measureText(l2).width) + 16;
+      var x = Math.min(cw - wpx - 8, Math.max(8, X(q.x) - wpx / 2));
+      var y = Math.max(6, Y(q.y) - 52);
+      ctx.fillStyle = 'rgba(8,20,24,.94)';
+      ctx.strokeStyle = '#2c8f80'; ctx.lineWidth = 1;
+      ctx.fillRect(x, y, wpx, 36);
+      ctx.strokeRect(x, y, wpx, 36);
+      ctx.fillStyle = '#d7f5ef'; ctx.fillText(l1, x + 8, y + 14);
+      ctx.fillStyle = '#8fb0ab'; ctx.fillText(l2, x + 8, y + 28);
     }
 
     /* ---- 面板 ---- */
@@ -2451,9 +2511,11 @@ window.MWViz = (function () {
         var pi = pumpIdxByNode[pm.node];
         var on = D.pon[i][pi], wl = D.pwl[i][pi] / 10;
         var nm = D.nodes[pm.node].id;
+        var pct = Math.max(4, Math.min(100, wl / 3 * 100));
         return '<div class="twin-sta' + (st.focus === pm.node ? ' on' : '') + '" data-k="' + pm.node + '">' +
           '<span><b>' + pm.id + '</b> · ' + nm + '</span>' +
-          '<span>开机 ' + on + '/' + pm.n + ' · 前池 ' + wl.toFixed(1) + ' m</span></div>';
+          '<span>开机 ' + on + '/' + pm.n + '<span class="wl"><i class="' + (wl >= 2.2 ? 'hi' : '') +
+          '" style="width:' + pct.toFixed(0) + '%"></i></span> ' + wl.toFixed(1) + ' m</span></div>';
       }).join('');
       Array.prototype.forEach.call(stasEl.children, function (el) {
         el.addEventListener('click', function () {
@@ -2558,9 +2620,13 @@ window.MWViz = (function () {
         clampView(); draw(); return;
       }
       var k = nodeAt(mx, my);
-      if (k !== hover) { hover = k; cv.style.cursor = k >= 0 ? 'pointer' : 'grab'; }
+      if (k !== hover) { hover = k; cv.style.cursor = k >= 0 ? 'pointer' : 'grab'; draw(); }
     });
-    cv.addEventListener('wheel', function (ev) {
+    cv.addEventListener('mouseleave', function () { if (hover >= 0) { hover = -1; draw(); } });
+    /* 滚轮缩放：整个地图区域生效（面板/卡片/底栏上的滚轮留给页面滚动） */
+    stage.addEventListener('wheel', function (ev) {
+      var tgt = ev.target;
+      if (tgt && tgt.closest && tgt.closest('.twin-panel, .twin-card, .twin-bottom')) return;
       ev.preventDefault();
       var r = cv.getBoundingClientRect();
       var mx = ev.clientX - r.left, my = ev.clientY - r.top;
@@ -2665,7 +2731,7 @@ window.MWViz = (function () {
     fit(); draw(); kpis(); stas();
     /* 底图微动（流向动画常亮 · 低频重绘） */
     animT = setInterval(function () {
-      if (!st.playing && layers.flow) draw();
+      if (!st.playing && (layers.flow || D.rain[st.i] > 0.05 || D.inflow[st.i] / 8000 >= 0.8)) draw();
     }, 110);
   }
 
